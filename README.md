@@ -1,6 +1,6 @@
 # 4U2CtheUVC
 
-An experimental macOS control panel and monitoring view for UVC webcams, developed primarily for the Razer Kiyo Pro Ultra. It provides direct camera controls without requiring Razer Synapse, plus a live preview, waveform, vectorscope, false color, and a configurable skin-tone qualifier.
+An experimental browser-based macOS control panel and monitoring view for UVC webcams, developed primarily for the Razer Kiyo Pro Ultra. It provides direct camera controls without requiring Razer Synapse, plus a live preview, waveform, vectorscope, false color, and a configurable skin-tone qualifier.
 
 > **Status: early alpha.** The Razer Kiyo Pro Ultra is the primary tested camera. Other UVC cameras may expose a useful subset of controls, but compatibility varies by device and firmware.
 
