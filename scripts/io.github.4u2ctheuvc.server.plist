@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>io.github.4u2ctheuvc.server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/false</string>
+    <string>/dev/null</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/tmp</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>CAMUTIL_DATA_DIR</key>
+    <string>/tmp</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <key>StandardOutPath</key>
+  <string>/tmp/4u2ctheuvc.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/4u2ctheuvc.log</string>
+</dict>
+</plist>

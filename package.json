@@ -1,0 +1,17 @@
+{
+  "name": "4u2ctheuvc",
+  "version": "0.1.0",
+  "description": "UVC Camera Control Panel with scopes, false color, and skin tone monitoring",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "uvcc": "^3.0.1"
+  }
+}

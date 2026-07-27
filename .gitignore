@@ -1,0 +1,15 @@
+.DS_Store
+*.log
+node_modules/
+native/bin/
+dist/
+
+# User-created camera presets and local runtime data
+presets/*.json
+data/
+
+# Editor and temporary files
+.idea/
+.vscode/
+*.swp
+*~
