@@ -371,12 +371,12 @@
       </div>
       <div class="scopes-grid">
         <div class="scope">
-          <span class="scope-label">Vectorscope</span>
-          <canvas id="vectorscope" class="scope-canvas"></canvas>
-        </div>
-        <div class="scope">
           <span class="scope-label">Waveform</span>
           <canvas id="waveform" class="scope-canvas"></canvas>
+        </div>
+        <div class="scope">
+          <span class="scope-label">Vectorscope</span>
+          <canvas id="vectorscope" class="scope-canvas"></canvas>
         </div>
       </div>
     </section>
@@ -979,14 +979,18 @@
         }
 
         for (let x = 0; x < SAMPLE_W; x++) {
-          const plotX = Math.round(wfPad + (x / SAMPLE_W) * wfPlotW);
+          // Each sample column spans one or more plot columns; fill them all so
+          // the trace has no gaps when the plot is wider than SAMPLE_W.
+          const plotX0 = Math.floor(wfPad + (x / SAMPLE_W) * wfPlotW);
+          const plotX1 = Math.max(plotX0 + 1, Math.floor(wfPad + ((x + 1) / SAMPLE_W) * wfPlotW));
           for (let y = 0; y < SAMPLE_H; y++) {
             const pi = (y * SAMPLE_W + x) * 4;
             const r = pixels[pi], g = pixels[pi + 1], b = pixels[pi + 2];
             if (scopeFilter && !isSkinTone(r, g, b)) continue;
             const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
             const plotY = Math.round(4 + wfPlotH * (1 - luma));
-            if (plotX >= 0 && plotX < wfW && plotY >= 0 && plotY < wfH) {
+            if (plotY < 0 || plotY >= wfH) continue;
+            for (let plotX = Math.max(0, plotX0); plotX < Math.min(plotX1, wfW); plotX++) {
               wfAccum[plotY * wfW + plotX] = Math.min(wfAccum[plotY * wfW + plotX] + 0.08, 1.0);
             }
           }
