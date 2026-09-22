@@ -4,708 +4,323 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>4U2CtheUVC — UVC Camera Control Panel</title>
+  <!-- Color Flow design system v0.1.0 (3017600). See CLAUDE.md for pin and deviations. -->
+  <link rel="stylesheet" href="vendor/color-flow/tokens.css">
+  <link rel="stylesheet" href="vendor/color-flow/flow.css">
+  <script src="vendor/color-flow/flow.js"></script>
   <style>
-    :root {
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --surface2: #1e1e1e;
-      --accent: #44bd32;
-      --accent-dim: #2d7a1e;
-      --text: #e4e4e4;
-      --text-dim: #777777;
-      --danger: #e74c3c;
-      --border: #2a2a2a;
-      --slider-track: #2a2a2a;
-      --slider-fill: #44bd32;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    /* App layout and local variants. Component styling comes from Color Flow;
+       everything here is scoped to this app and uses --flow-* tokens. */
+    html, body { margin: 0; height: 100%; }
+    body.flow-ui { overflow: hidden; }
 
     .app {
       display: grid;
-      grid-template-columns: 1fr 420px;
-      grid-template-rows: auto 1fr;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-rows: auto minmax(0, 1fr) 270px;
+      gap: 16px 24px;
       height: 100vh;
-      gap: 0;
-      overflow: hidden;
+      padding: 20px 24px 24px;
+      box-sizing: border-box;
     }
 
-    header {
+    /* ── Header ── */
+    .app-header {
       grid-column: 1 / -1;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 24px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      min-width: 0;
     }
+    .app-header .flow-muted { margin: 4px 0 0; font-size: 11px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .header-actions .flow-field { width: 260px; }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .app-icon {
-      width: 28px;
-      height: 28px;
-    }
-
-    header h1 {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
-
-    header h1 span {
-      color: var(--accent);
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .device-name {
-      font-size: 13px;
-      color: var(--text-dim);
-    }
-
+    /* Deviation: Color Flow has no status colors. Green/red here carries
+       meaning (camera connected vs. offline), so it is kept deliberately. */
     .status-dot {
       width: 8px;
       height: 8px;
+      flex: 0 0 8px;
       border-radius: 50%;
-      background: var(--accent);
-      display: inline-block;
+      background: #44bd32;
     }
+    .status-dot.offline { background: #e74c3c; }
 
-    .status-dot.offline { background: var(--danger); }
+    .theme-switch { display: flex; gap: 4px; }
 
-    .preview-section {
-      display: flex;
-      flex-direction: column;
-      background: #000;
+    /* ── Preview stage ── */
+    .preview-stage {
       position: relative;
-      overflow: hidden;
-    }
-
-    .preview-container {
-      position: relative;
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       min-height: 0;
+      overflow: hidden;
+      border-radius: var(--flow-panel-radius);
+      background: #000;
     }
-
+    .preview-stage video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+    #false-color-overlay,
+    #skin-tone-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      display: none;
+    }
     .preview-message {
       position: absolute;
       inset: 0;
       display: none;
       place-items: center;
       padding: 24px;
-      color: var(--text-dim);
-      font-size: 13px;
+      color: #9a9f91;
+      font-size: 11px;
       text-align: center;
       pointer-events: none;
     }
 
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-    }
-
-    #false-color-overlay,
-    #skin-tone-overlay {
+    /* Floating toolbar sheet over the preview */
+    .cam-toolbar {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      pointer-events: none;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      width: max-content;
+      max-width: calc(100% - 24px);
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      padding: 5px;
+      border: 1px solid var(--flow-line);
+      border-radius: 10px;
+      background: var(--flow-paper);
+      backdrop-filter: blur(var(--flow-panel-blur));
+      box-shadow: var(--flow-panel-shadow);
+    }
+    .cam-toolbar .flow-field { width: 130px; }
+    .cam-toolbar .fps-actual { padding: 0 8px 0 4px; font-size: 10px; color: var(--flow-muted); }
+
+    /* Skin tone qualifier sheet */
+    .skin-panel {
+      position: absolute;
+      top: 64px;
+      left: 12px;
+      z-index: 13;
+      width: 260px;
+      max-height: calc(100% - 76px);
+      overflow-y: auto;
       display: none;
     }
+    .skin-panel .flow-panel-title { display: flex; align-items: center; gap: 6px; }
 
+    /* False color legend sheet */
     .fc-legend {
       position: absolute;
       left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 190px;
-      display: none;
-      flex-direction: column;
+      top: 64px;
       z-index: 12;
-      pointer-events: none;
-      border-radius: 6px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.15);
-      background: rgba(8,8,8,0.88);
-      box-shadow: 0 4px 18px rgba(0,0,0,0.35);
-    }
-
-    .fc-legend.show {
-      display: flex;
-    }
-
-    .fc-legend-stop {
-      display: flex;
-      align-items: center;
-      min-height: 20px;
-      position: relative;
-    }
-
-    .fc-legend-title {
-      padding: 7px 8px;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      color: var(--text);
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-    }
-
-    .fc-legend-title span {
-      display: block;
-      margin-top: 3px;
-      font-weight: 500;
-      letter-spacing: 0;
-      color: #ffcc66;
-    }
-
-    .fc-legend-color {
-      width: 28px;
-      align-self: stretch;
-      flex: 0 0 28px;
-    }
-
-    .fc-legend-label {
-      padding: 3px 6px;
-      font-size: 9px;
-      color: #fff;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .fc-skin-badge {
-      margin-left: 4px;
-      font-size: 8px;
-      color: #ffcc66;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .skin-tone-section {
+      width: 200px;
       display: none;
-      position: absolute;
-      top: 50px;
-      left: 8px;
-      z-index: 13;
-      width: 260px;
-      max-height: calc(100% - 58px);
-      overflow-y: auto;
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 6px;
-      background: rgba(14,14,14,0.9);
-      box-shadow: 0 4px 18px rgba(0,0,0,0.4);
-      backdrop-filter: blur(8px);
+      pointer-events: none;
+      padding: 10px 12px 12px;
     }
+    .fc-legend.show { display: block; }
+    .preview-stage.skin-active .fc-legend { left: 284px; }
+    .fc-legend-head { margin-bottom: 8px; }
+    .fc-legend-head .flow-panel-title { display: block; }
+    .fc-legend-sub { font-size: 10px; color: var(--flow-muted); }
+    .fc-legend-guide { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--flow-muted); margin-top: 2px; }
+    .fc-legend-list { display: grid; gap: 3px; }
+    .fc-legend-stop { display: grid; grid-template-columns: 14px 44px 1fr 3px; align-items: center; gap: 7px; }
+    .fc-legend-chip { width: 14px; height: 14px; border-radius: 2px; }
+    .fc-legend-range { font: 10px var(--flow-mono); font-variant-numeric: tabular-nums; }
+    .fc-legend-name { font-size: 10px; color: var(--flow-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Skin guide marker is a data annotation, so it keeps its own color. */
+    .fc-skin-mark { width: 3px; height: 14px; border-radius: 1px; background: #ffcc66; }
+    .fc-skin-dot { width: 7px; height: 7px; border-radius: 50%; background: #ffcc66; }
 
-    .skin-tone-section h2 {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--text-dim);
-      margin: 0;
-    }
-
-    .skin-tone-header {
+    /* ── Scopes tray ── */
+    .scopes-panel {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .scopes-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
-      margin-bottom: 12px;
     }
-
-    .skin-reset-btn {
-      padding: 3px 7px;
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      color: var(--text-dim);
-      background: transparent;
-      font-size: 10px;
-      cursor: pointer;
-    }
-
-    .skin-reset-btn:hover {
-      color: var(--text);
-      border-color: var(--accent);
-    }
-
-    .skin-tone-section .control-row {
-      margin-bottom: 10px;
-    }
-
-    .skin-tone-section .control-header {
-      margin-bottom: 4px;
-    }
-
-    .preview-container.skin-active .fc-legend {
-      left: 280px;
-    }
-
-    .preview-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      background: rgba(0,0,0,0.7);
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      border-radius: 6px;
-      z-index: 10;
-    }
-
-    .preview-toolbar .toolbar-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-dim);
-    }
-
-    .toolbar-select {
-      font-size: 11px;
-      padding: 3px 6px;
-      background: #111;
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 3px;
-    }
-
-    .fps-actual {
-      min-width: 44px;
-      font-size: 10px;
-      color: var(--text-dim);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .toolbar-btn {
-      font-size: 11px;
-      padding: 3px 8px;
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-dim);
-      border-radius: 3px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .toolbar-btn:hover { border-color: var(--text-dim); color: var(--text); }
-    .toolbar-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(68,189,50,0.1); }
-
-    .scopes-row {
-      display: flex;
-      height: 220px;
-      min-height: 220px;
-      border-top: 1px solid var(--border);
+    /* Deviation: scope plots are data surfaces and stay black
+       in both themes so traces read the same regardless of chrome. */
+    .scope {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      border-radius: var(--flow-control-radius);
       background: #000;
     }
-
-    .scope-panel {
-      flex: 1;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .scope-panel + .scope-panel {
-      border-left: 1px solid var(--border);
-    }
-
     .scope-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-dim);
-      padding: 6px 10px 0;
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 6px;
+      left: 8px;
       z-index: 2;
-      background: rgba(0,0,0,0.5);
-      border-radius: 0 0 4px 0;
-    }
-
-    .scope-canvas {
-      width: 100%;
-      height: 100%;
-    }
-
-    .controls-panel {
-      background: var(--surface);
-      border-left: 1px solid var(--border);
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .panel-section {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .panel-section h2 {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--text-dim);
-      margin-bottom: 14px;
-    }
-
-    .control-row {
-      margin-bottom: 14px;
-    }
-
-    .control-row:last-child { margin-bottom: 0; }
-
-    .control-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .control-label {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .control-value {
-      font-size: 12px;
-      color: var(--accent);
-      font-variant-numeric: tabular-nums;
-      min-width: 48px;
-      text-align: right;
-    }
-
-    .control-value-input {
-      width: 78px;
-      padding: 3px 5px;
-      font: inherit;
-      font-size: 12px;
-      color: var(--accent);
-      font-variant-numeric: tabular-nums;
-      text-align: right;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      outline: none;
-    }
-
-    .control-value-input:hover,
-    .control-value-input:focus {
-      border-color: var(--accent-dim);
-    }
-
-    input[type="range"] {
-      -webkit-appearance: none;
-      width: 100%;
-      height: 6px;
-      border-radius: 3px;
-      background: var(--slider-track);
-      outline: none;
-      cursor: pointer;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: var(--accent);
-      cursor: pointer;
-      border: 2px solid var(--bg);
-      transition: transform 0.1s;
-    }
-
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-    }
-
-    input[type="range"]:active::-webkit-slider-thumb {
-      background: #5dd93b;
-    }
-
-    .exposure-slider-wrap {
-      position: relative;
-    }
-
-    .control-help {
-      margin-top: 5px;
-      font-size: 10px;
-      color: var(--text-dim);
-    }
-
-    .toggle-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .toggle-row:last-child { margin-bottom: 0; }
-
-    .toggle-label {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .toggle {
-      position: relative;
-      display: inline-block;
-      flex: 0 0 44px;
-      width: 44px;
-      height: 24px;
-      cursor: pointer;
-    }
-
-    .toggle input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-track {
-      position: absolute;
-      inset: 0;
-      background: var(--slider-track);
-      border-radius: 12px;
-      transition: background 0.2s;
-    }
-
-    .toggle input:checked + .toggle-track {
-      background: var(--accent);
-    }
-
-    .toggle-knob {
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 18px;
-      height: 18px;
-      background: white;
-      border-radius: 50%;
-      transition: transform 0.2s;
+      font: 10px var(--flow-mono);
+      color: #9a9f91;
       pointer-events: none;
     }
+    .scope-canvas { display: block; width: 100%; height: 100%; }
 
-    .toggle input:checked ~ .toggle-knob {
-      transform: translateX(20px);
+    /* ── Controls panel ── */
+    .controls-panel {
+      grid-column: 2;
+      grid-row: 2 / 4;
+      min-height: 0;
+      overflow-y: auto;
     }
+    .controls-panel .flow-panel-header + .flow-section { border-top: 0; margin-top: 0; padding-top: 0; }
+    .control-note { font-size: 10px; color: var(--flow-muted); margin: 2px 0 0; }
+    .cam-empty { padding: 24px 0; font-size: 11px; color: var(--flow-muted); }
 
-    .select-control {
-      width: 100%;
-      padding: 6px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-
-    .pan-tilt-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .pan-tilt-grid .control-row { margin-bottom: 0; }
-
-    .preset-section {
-      padding: 16px 20px;
-    }
-
-    .preset-section h2 {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--text-dim);
-      margin-bottom: 14px;
-    }
-
-    .preset-actions {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .preset-actions input {
-      flex: 1;
-      padding: 7px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 4px;
-      font-size: 13px;
-    }
-
-    .preset-actions input::placeholder { color: var(--text-dim); }
-
-    .btn {
-      padding: 7px 14px;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: opacity 0.15s;
-      white-space: nowrap;
-    }
-
-    .btn:hover { opacity: 0.85; }
-    .btn:active { opacity: 0.7; }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #111;
-    }
-
-    .btn-secondary {
-      background: var(--surface2);
-      color: var(--text);
-    }
-
-    .btn-danger {
+    /* Deviation: editable value inside a Color Flow slider. The number field
+       sits above the invisible range input so it can be clicked and typed in;
+       the rest of the well still drags. */
+    .cam-slider-value {
+      position: relative;
+      z-index: 1;
+      width: 8ch;
+      margin: 0 -4px 0 auto;
+      padding: 3px 4px;
+      border: 0;
+      border-radius: 3px;
       background: transparent;
-      color: var(--danger);
-      padding: 4px 8px;
-      font-size: 12px;
+      font: 11px var(--flow-mono) !important;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      cursor: text;
+      appearance: textfield;
+      -moz-appearance: textfield;
     }
+    .cam-slider-value::-webkit-inner-spin-button,
+    .cam-slider-value::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .cam-slider-value:hover { background: var(--flow-well); }
+    .cam-slider-value:focus { background: var(--flow-paper); outline: none; }
+    .flow-slider > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .preset-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
+    /* Presets */
+    .preset-save { display: flex; gap: 6px; }
+    .preset-save .flow-input { padding: 6px 9px; font-size: 11px; }
+    .preset-list { display: grid; gap: 6px; margin-top: 10px; }
     .preset-item {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 8px 12px;
-      background: var(--bg);
-      border-radius: 4px;
-      border: 1px solid var(--border);
+      gap: 10px;
+      min-height: var(--flow-control-height);
+      padding: 4px 11px;
+      border-radius: var(--flow-control-radius);
+      background: var(--flow-well);
     }
+    .preset-item-text { flex: 1; min-width: 0; }
+    .preset-item-name { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .preset-item-date { font: 9px var(--flow-mono); color: var(--flow-muted); }
+    .preset-item-actions { display: flex; gap: 10px; }
 
-    .preset-item-name {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .preset-item-date {
-      font-size: 11px;
-      color: var(--text-dim);
-    }
-
-    .preset-item-actions {
-      display: flex;
-      gap: 4px;
-    }
-
+    /* Deviation: Color Flow has no toast; this is a local paper sheet. */
     .toast {
       position: fixed;
       bottom: 24px;
       left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: var(--surface2);
-      color: var(--text);
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-size: 13px;
-      border: 1px solid var(--accent);
-      transition: transform 0.3s ease;
       z-index: 100;
+      padding: 9px 14px;
+      border: 1px solid var(--flow-line);
+      border-radius: 10px;
+      background: var(--flow-paper);
+      backdrop-filter: blur(var(--flow-panel-blur));
+      box-shadow: var(--flow-popup-shadow);
+      font-size: 11px;
+      max-width: min(440px, calc(100vw - 32px));
+      transform: translateX(-50%) translateY(120px);
+      transition: transform 0.3s ease;
     }
-
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
+    .toast span {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+      overflow-wrap: anywhere;
     }
-
-    .refresh-btn {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text-dim);
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .refresh-btn:hover { border-color: var(--accent); color: var(--text); }
-
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px;
-      color: var(--text-dim);
-    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
     @media (max-width: 900px) {
+      body.flow-ui { overflow: auto; }
       .app {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto;
+        height: auto;
+        padding: 16px;
       }
-      .preview-section { min-height: 300px; }
-      .scopes-row { height: 180px; min-height: 180px; }
-      .controls-panel { border-left: none; border-top: 1px solid var(--border); }
+      .app-header { flex-wrap: wrap; }
+      .header-actions { flex-wrap: wrap; }
+      .header-actions .flow-field { width: min(260px, 100%); }
+      .preview-stage { height: 56vw; min-height: 300px; }
+      .scopes-panel { height: 260px; }
+      .controls-panel { grid-column: 1; grid-row: auto; overflow: visible; }
     }
   </style>
 </head>
-<body>
+<body class="flow-ui" data-flow-theme="dark">
+  <script>
+    // Apply the saved (or OS) theme before first paint.
+    (function () {
+      let theme = null;
+      try { theme = localStorage.getItem("4u2c-theme"); } catch (e) {}
+      if (theme !== "light" && theme !== "dark") {
+        theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      document.body.dataset.flowTheme = theme;
+    })();
+  </script>
   <div class="app">
-    <header>
-      <div class="header-left">
-        <svg class="app-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="28" height="28" rx="6" fill="#141414"/>
-          <circle cx="14" cy="14" r="8.5" stroke="#44bd32" stroke-width="1.5"/>
-          <circle cx="14" cy="14" r="5" stroke="#44bd32" stroke-width="1" opacity="0.5"/>
-          <circle cx="14" cy="14" r="1.8" fill="#44bd32"/>
-          <circle cx="20" cy="8.5" r="1.2" fill="#44bd32" opacity="0.5"/>
-          <line x1="6" y1="7" x2="22" y2="7" stroke="#44bd32" stroke-width="0.8" opacity="0.25" stroke-linecap="round"/>
-        </svg>
-        <h1><span>4U2C</span>theUVC</h1>
+    <header class="app-header">
+      <div>
+        <h1 class="flow-title">4U2CtheUVC</h1>
+        <p class="flow-muted">UVC camera control</p>
       </div>
-      <div class="header-right">
-        <select class="select-control" id="device-select" style="width:auto;min-width:180px" onchange="selectDevice(this.value)">
-          <option value="">Detecting cameras...</option>
-        </select>
-        <span class="status-dot offline" id="status-dot"></span>
-        <button class="refresh-btn" onclick="init()">Refresh</button>
+      <div class="header-actions">
+        <span class="status-dot offline" id="status-dot" role="img" aria-label="Camera offline" title="Camera offline"></span>
+        <label class="flow-field">
+          <span>Camera</span>
+          <select id="device-select" onchange="selectDevice(this.value)">
+            <option value="">Detecting cameras...</option>
+          </select>
+        </label>
+        <button class="flow-button flow-button--outline" onclick="init()">Refresh</button>
+        <div class="theme-switch" role="group" aria-label="Theme">
+          <button class="flow-button" data-theme-choice="light" aria-pressed="false" onclick="setTheme('light')">Light</button>
+          <button class="flow-button" data-theme-choice="dark" aria-pressed="false" onclick="setTheme('dark')">Dark</button>
+        </div>
       </div>
     </header>
 
-    <div class="preview-section">
-      <div class="preview-container">
-        <div class="preview-toolbar">
-          <span class="toolbar-label">View</span>
-          <button class="toolbar-btn" id="btn-false-color" onclick="toggleFalseColor()">False Color</button>
-          <button class="toolbar-btn" id="btn-skin-tone" onclick="toggleSkinTone()">Skin Tone</button>
-          <span class="toolbar-label" style="margin-left:6px">Preview FPS</span>
-          <select class="toolbar-select" id="fps-select" onchange="changePreviewFrameRate(Number(this.value))">
+    <div class="preview-stage" id="preview-stage">
+      <div class="cam-toolbar" role="toolbar" aria-label="Preview view options">
+        <button class="flow-button" id="btn-false-color" aria-pressed="false" onclick="toggleFalseColor()">False color</button>
+        <button class="flow-button" id="btn-skin-tone" aria-pressed="false" onclick="toggleSkinTone()">Skin tone</button>
+        <label class="flow-field">
+          <span>FPS</span>
+          <select id="fps-select" onchange="changePreviewFrameRate(Number(this.value))">
             <option value="0">Auto</option>
             <option value="5">5</option>
             <option value="10">10</option>
@@ -717,93 +332,56 @@
             <option value="50">50</option>
             <option value="60">60</option>
           </select>
-          <span class="fps-actual" id="fps-actual">—</span>
-        </div>
-        <video id="preview" autoplay playsinline muted></video>
-        <div class="preview-message" id="preview-message"></div>
-        <canvas id="false-color-overlay"></canvas>
-        <canvas id="skin-tone-overlay"></canvas>
-        <div class="skin-tone-section" id="skin-tone-controls">
-          <div class="skin-tone-header">
-            <h2>Skin Tone Qualifier</h2>
-            <button class="skin-reset-btn" onclick="resetSkinQualifier()">Reset defaults</button>
-          </div>
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Hue Min (Cb)</span>
-              <input class="control-value-input" type="number" id="sqval-cbMin" min="-0.5" max="0.5" step="0.01" value="-0.18"
-                onchange="setSkinQualifierValue('cbMin', this, -0.5, 0.5, 0.01)" onkeydown="handleEditableValueKey(event)" aria-label="Hue minimum Cb value">
-            </div>
-            <input type="range" id="sqslider-cbMin" min="-0.5" max="0.5" step="0.01" value="-0.18"
-              oninput="document.getElementById('sqval-cbMin').value=this.value; updateSkinQual('cbMin', this.value)">
-          </div>
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Hue Max (Cb)</span>
-              <input class="control-value-input" type="number" id="sqval-cbMax" min="-0.5" max="0.5" step="0.01" value="0.08"
-                onchange="setSkinQualifierValue('cbMax', this, -0.5, 0.5, 0.01)" onkeydown="handleEditableValueKey(event)" aria-label="Hue maximum Cb value">
-            </div>
-            <input type="range" id="sqslider-cbMax" min="-0.5" max="0.5" step="0.01" value="0.08"
-              oninput="document.getElementById('sqval-cbMax').value=this.value; updateSkinQual('cbMax', this.value)">
-          </div>
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Hue Min (Cr)</span>
-              <input class="control-value-input" type="number" id="sqval-crMin" min="-0.5" max="0.5" step="0.01" value="0.05"
-                onchange="setSkinQualifierValue('crMin', this, -0.5, 0.5, 0.01)" onkeydown="handleEditableValueKey(event)" aria-label="Hue minimum Cr value">
-            </div>
-            <input type="range" id="sqslider-crMin" min="-0.5" max="0.5" step="0.01" value="0.05"
-              oninput="document.getElementById('sqval-crMin').value=this.value; updateSkinQual('crMin', this.value)">
-          </div>
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Hue Max (Cr)</span>
-              <input class="control-value-input" type="number" id="sqval-crMax" min="-0.5" max="0.5" step="0.01" value="0.42"
-                onchange="setSkinQualifierValue('crMax', this, -0.5, 0.5, 0.01)" onkeydown="handleEditableValueKey(event)" aria-label="Hue maximum Cr value">
-            </div>
-            <input type="range" id="sqslider-crMax" min="-0.5" max="0.5" step="0.01" value="0.42"
-              oninput="document.getElementById('sqval-crMax').value=this.value; updateSkinQual('crMax', this.value)">
-          </div>
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Luma Min (IRE)</span>
-              <input class="control-value-input" type="number" id="sqval-lumaMin" min="0" max="100" step="1" value="20"
-                onchange="setSkinQualifierValue('lumaMin', this, 0, 100, 1)" onkeydown="handleEditableValueKey(event)" aria-label="Luma minimum IRE value">
-            </div>
-            <input type="range" id="sqslider-lumaMin" min="0" max="100" step="1" value="20"
-              oninput="document.getElementById('sqval-lumaMin').value=this.value; updateSkinQual('lumaMin', this.value)">
-          </div>
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Luma Max (IRE)</span>
-              <input class="control-value-input" type="number" id="sqval-lumaMax" min="0" max="100" step="1" value="80"
-                onchange="setSkinQualifierValue('lumaMax', this, 0, 100, 1)" onkeydown="handleEditableValueKey(event)" aria-label="Luma maximum IRE value">
-            </div>
-            <input type="range" id="sqslider-lumaMax" min="0" max="100" step="1" value="80"
-              oninput="document.getElementById('sqval-lumaMax').value=this.value; updateSkinQual('lumaMax', this.value)">
-          </div>
-          <div class="control-help">Only qualified pixels are sent to both scopes.</div>
-        </div>
-        <div class="fc-legend" id="fc-legend"></div>
+        </label>
+        <span class="fps-actual flow-mono" id="fps-actual">—</span>
       </div>
-      <div class="scopes-row">
-        <div class="scope-panel">
+      <video id="preview" autoplay playsinline muted></video>
+      <div class="preview-message" id="preview-message"></div>
+      <canvas id="false-color-overlay"></canvas>
+      <canvas id="skin-tone-overlay"></canvas>
+      <section class="flow-panel skin-panel" id="skin-tone-controls" aria-labelledby="skin-title">
+        <div class="flow-panel-header">
+          <h2 class="flow-panel-title" id="skin-title">Skin tone
+            <button class="flow-info-button" data-flow-open="skin-info" aria-label="About the skin tone qualifier" aria-haspopup="dialog">i</button>
+          </h2>
+          <button class="flow-text-button" onclick="resetSkinQualifier()">Reset</button>
+        </div>
+        <div class="flow-stack" id="skin-sliders"></div>
+        <p class="control-note">Only qualified pixels are sent to both scopes.</p>
+      </section>
+      <div class="flow-panel fc-legend" id="fc-legend"></div>
+    </div>
+
+    <section class="flow-panel flow-palette scopes-panel" aria-labelledby="scopes-title">
+      <div class="flow-panel-header">
+        <h2 class="flow-panel-title" id="scopes-title">Scopes</h2>
+        <span class="flow-status" id="scope-note">Rec.709 luma · BT.601 chroma</span>
+      </div>
+      <div class="scopes-grid">
+        <div class="scope">
           <span class="scope-label">Vectorscope</span>
           <canvas id="vectorscope" class="scope-canvas"></canvas>
         </div>
-        <div class="scope-panel">
+        <div class="scope">
           <span class="scope-label">Waveform</span>
           <canvas id="waveform" class="scope-canvas"></canvas>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="controls-panel" id="controls-panel">
-      <div class="loading" id="loading">Loading controls...</div>
-    </div>
+    <section class="flow-panel controls-panel" id="controls-panel" aria-label="Camera controls">
+      <div class="cam-empty" id="loading">Loading controls...</div>
+    </section>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <dialog class="flow-popup" id="skin-info" aria-labelledby="skin-info-title">
+    <header><h2 id="skin-info-title">Skin tone qualifier</h2>
+      <button class="flow-popup-close" data-flow-close aria-label="Close skin tone information">×</button>
+    </header>
+    <p>Pixels inside these Cb/Cr and luma ranges stay in color; everything else turns gray. The defaults are a broad starting point. Skin chroma and luma vary with complexion, lighting, and intent.</p>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <canvas id="sample-canvas" style="display:none"></canvas>
 
@@ -824,10 +402,48 @@
     const SAMPLE_W = 320;
     const SAMPLE_H = 180;
     const DECAY = 0.85;
+    const SCOPE_FONT = '9px ui-monospace, "SFMono-Regular", Menlo, monospace';
+    const SCOPE_FONT_BOLD = '600 8px ui-monospace, "SFMono-Regular", Menlo, monospace';
+
+    // Color Flow behaviors (slider fills, popups). Call flowUI.refresh() after
+    // setting slider values programmatically or re-rendering sliders.
+    const flowUI = FlowUI.mount(document.body);
+
+    function setTheme(theme) {
+      document.body.dataset.flowTheme = theme;
+      document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.themeChoice === theme));
+      });
+      try { localStorage.setItem("4u2c-theme", theme); } catch (e) {}
+    }
+    setTheme(document.body.dataset.flowTheme);
+
+    function setStatus(online) {
+      const dot = document.getElementById("status-dot");
+      const label = online ? "Camera connected" : "Camera offline";
+      dot.classList.toggle("offline", !online);
+      dot.setAttribute("aria-label", label);
+      dot.title = label;
+    }
+
+    // Color Flow slider with an editable value field (local variant).
+    function sliderHTML({ id, valueId, label, min, max, step = 1, value, onInput, onCommit }) {
+      return `
+        <div class="flow-slider">
+          <span>${label}</span>
+          <input class="cam-slider-value" type="number" id="${valueId}"
+            min="${min}" max="${max}" step="${step}" value="${value}"
+            onchange="${onCommit}" onkeydown="handleEditableValueKey(event)" aria-label="${label} value">
+          <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${value}"
+            aria-label="${label}" oninput="${onInput}">
+        </div>`;
+    }
 
     function toast(msg) {
       const el = document.getElementById("toast");
-      el.textContent = msg;
+      const text = document.createElement("span");
+      text.textContent = msg;
+      el.replaceChildren(text);
       el.classList.add("show");
       setTimeout(() => el.classList.remove("show"), 2000);
     }
@@ -892,18 +508,21 @@
       }
     }
 
-    async function setToggleControl(control, checkbox, onValue, offValue) {
-      const requestedValue = checkbox.checked ? onValue : offValue;
+    // Toggle buttons: the app owns aria-pressed so it can reflect the value the
+    // camera actually confirms, and revert when a write fails.
+    async function setToggleControl(control, button, onValue, offValue) {
+      const wasOn = button.getAttribute("aria-pressed") === "true";
+      button.setAttribute("aria-pressed", String(!wasOn));
       try {
         const result = await api("POST", "/set", {
           control,
-          value: requestedValue,
+          value: wasOn ? offValue : onValue,
           verify: true,
           ...devBody(),
         });
-        checkbox.checked = Number(result.value) === onValue;
+        button.setAttribute("aria-pressed", String(Number(result.value) === onValue));
       } catch (error) {
-        checkbox.checked = !checkbox.checked;
+        button.setAttribute("aria-pressed", String(wasOn));
         toast(`Error: ${error.message}`);
       }
     }
@@ -952,24 +571,28 @@
         min: index === 0 ? 0 : FALSE_COLOR_STOPS[index - 1].max,
       })).reverse();
       legend.innerHTML = `
-        <div class="fc-legend-title">
-          FALSE COLOR · REC.709 LUMA
-          <span>Typical skin guide: ~${SKIN_IRE_MIN}–${SKIN_IRE_MAX} IRE</span>
+        <div class="fc-legend-head">
+          <span class="flow-panel-title">False color</span>
+          <span class="fc-legend-sub">Rec.709 luma · IRE</span>
+          <span class="fc-legend-guide"><span class="fc-skin-dot"></span>Typical skin ~${SKIN_IRE_MIN}–${SKIN_IRE_MAX}</span>
         </div>
+        <div class="fc-legend-list">
       ` + bands.map(s => {
         const overlapsSkinGuide = s.max > SKIN_IRE_MIN && s.min < SKIN_IRE_MAX;
         return `
           <div class="fc-legend-stop">
-            <div class="fc-legend-color" style="background:rgb(${s.r},${s.g},${s.b})"></div>
-            <span class="fc-legend-label">${s.min}–${s.max} IRE · ${s.label}${overlapsSkinGuide ? '<span class="fc-skin-badge">skin</span>' : ''}</span>
+            <span class="fc-legend-chip" style="background:rgb(${s.r},${s.g},${s.b})"></span>
+            <span class="fc-legend-range">${s.min}–${s.max}</span>
+            <span class="fc-legend-name">${s.label}</span>
+            <span class="${overlapsSkinGuide ? "fc-skin-mark" : ""}"></span>
           </div>`;
-      }).join("");
+      }).join("") + "</div>";
     }
     buildFCLegend();
 
     function toggleFalseColor() {
       falseColorEnabled = !falseColorEnabled;
-      document.getElementById("btn-false-color").classList.toggle("active", falseColorEnabled);
+      document.getElementById("btn-false-color").setAttribute("aria-pressed", String(falseColorEnabled));
       document.getElementById("false-color-overlay").style.display = falseColorEnabled ? "block" : "none";
       document.getElementById("fc-legend").classList.toggle("show", falseColorEnabled);
     }
@@ -982,6 +605,25 @@
       lumaMin: 20,  lumaMax: 80,
     });
     let skinQual = { ...DEFAULT_SKIN_QUALIFIER };
+
+    const SKIN_FIELDS = [
+      { key: "cbMin", label: "Hue min (Cb)", min: -0.5, max: 0.5, step: 0.01 },
+      { key: "cbMax", label: "Hue max (Cb)", min: -0.5, max: 0.5, step: 0.01 },
+      { key: "crMin", label: "Hue min (Cr)", min: -0.5, max: 0.5, step: 0.01 },
+      { key: "crMax", label: "Hue max (Cr)", min: -0.5, max: 0.5, step: 0.01 },
+      { key: "lumaMin", label: "Luma min (IRE)", min: 0, max: 100, step: 1 },
+      { key: "lumaMax", label: "Luma max (IRE)", min: 0, max: 100, step: 1 },
+    ];
+    document.getElementById("skin-sliders").innerHTML = SKIN_FIELDS.map((f) => sliderHTML({
+      id: `sqslider-${f.key}`,
+      valueId: `sqval-${f.key}`,
+      label: f.label,
+      min: f.min, max: f.max, step: f.step,
+      value: DEFAULT_SKIN_QUALIFIER[f.key],
+      onInput: `updateSkinQual('${f.key}', this.value)`,
+      onCommit: `setSkinQualifierValue('${f.key}', this, ${f.min}, ${f.max}, ${f.step})`,
+    })).join("");
+    flowUI.refresh();
 
     function isSkinTone(r, g, b) {
       const cbN = (-0.168736 * r - 0.331264 * g + 0.5 * b) / 128;
@@ -996,9 +638,9 @@
       skinToneEnabled = !skinToneEnabled;
       vsAccum = null;
       wfAccum = null;
-      document.getElementById("btn-skin-tone").classList.toggle("active", skinToneEnabled);
+      document.getElementById("btn-skin-tone").setAttribute("aria-pressed", String(skinToneEnabled));
       document.getElementById("skin-tone-overlay").style.display = skinToneEnabled ? "block" : "none";
-      document.querySelector(".preview-container").classList.toggle("skin-active", skinToneEnabled);
+      document.getElementById("preview-stage").classList.toggle("skin-active", skinToneEnabled);
       const section = document.getElementById("skin-tone-controls");
       if (section) section.style.display = skinToneEnabled ? "block" : "none";
     }
@@ -1019,6 +661,7 @@
         if (input) input.value = value;
         if (slider) slider.value = value;
       }
+      flowUI.refresh();
       vsAccum = null;
       wfAccum = null;
       toast("Skin qualifier reset to defaults");
@@ -1090,7 +733,7 @@
       ctx.setLineDash([]);
 
       ctx.fillStyle = "rgba(255,180,100,0.5)";
-      ctx.font = "9px -apple-system, sans-serif";
+      ctx.font = SCOPE_FONT;
       ctx.fillText("SKIN", cx + skinDx * 1.05, cy + skinDy * 1.05);
 
       // color targets — positioned by their actual Cb/Cr values
@@ -1103,7 +746,7 @@
         ctx.rect(tx - 5, ty - 5, 10, 10);
         ctx.stroke();
         ctx.fillStyle = t.color;
-        ctx.font = "bold 8px -apple-system, sans-serif";
+        ctx.font = SCOPE_FONT_BOLD;
         ctx.textAlign = "center";
         ctx.fillText(t.label, tx, ty - 8);
       }
@@ -1127,7 +770,7 @@
 
       ctx.strokeStyle = "rgba(255,255,255,0.08)";
       ctx.lineWidth = 0.5;
-      ctx.font = "9px -apple-system, sans-serif";
+      ctx.font = SCOPE_FONT;
       ctx.fillStyle = "rgba(255,255,255,0.2)";
       ctx.textAlign = "right";
 
@@ -1536,6 +1179,7 @@
       input.value = value;
       const slider = document.getElementById(`slider-${control}`);
       if (slider) slider.value = value;
+      flowUI.refresh();
       setControl(control, value);
     }
 
@@ -1547,6 +1191,7 @@
       const value = Math.round(clampNumber(input.value, min, max));
       input.value = value;
       document.getElementById(`slider-${axis}`).value = value;
+      flowUI.refresh();
       const pan = Number(document.getElementById("slider-pan").value);
       const tilt = Number(document.getElementById("slider-tilt").value);
       setControl("absolute_pan_tilt", [pan, tilt]);
@@ -1557,6 +1202,7 @@
       const decimals = String(step).includes(".") ? String(step).split(".")[1].length : 0;
       input.value = value.toFixed(decimals);
       document.getElementById(`sqslider-${key}`).value = value;
+      flowUI.refresh();
       updateSkinQual(key, value);
     }
 
@@ -1622,7 +1268,7 @@
     async function commitNativeExposure(rawValue) {
       const value = Math.round(Number(rawValue));
       const autoExposureToggle = document.getElementById("toggle-auto_exposure_mode");
-      if (autoExposureToggle) autoExposureToggle.checked = false;
+      if (autoExposureToggle) autoExposureToggle.setAttribute("aria-pressed", "false");
       const writeId = ++exposureWriteId;
       const status = document.getElementById("exposure-diagnostic");
       if (status) status.textContent = `Writing ${value}…`;
@@ -1644,6 +1290,7 @@
         } else if (slider) {
           slider.value = acceptedValue;
         }
+        flowUI.refresh();
         if (display) display.textContent = acceptedValue;
         if (acceptedValue !== value) {
           toast(`Camera accepted exposure ${acceptedValue}, not ${value}`);
@@ -1674,41 +1321,41 @@
     }
 
     function exposureSliderHTML(range, currentValue) {
+      const info = (text) => `
+        <dialog class="flow-popup" id="exposure-info" aria-labelledby="exposure-info-title">
+          <header><h2 id="exposure-info-title">Exposure time</h2>
+            <button class="flow-popup-close" data-flow-close aria-label="Close exposure information">×</button>
+          </header>
+          <p>${text}</p>
+          <p>Release the slider to write the value; the camera's confirmed reading appears below it.</p>
+        </dialog>`;
       if (isKiyoProUltra()) {
         const currentIndex = nearestKiyoExposureStop(currentValue);
         const currentStop = KIYO_EXPOSURE_STOPS[currentIndex];
         return `
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Exposure Time</span>
-              <span><span class="control-value" id="val-absolute_exposure_time">${currentStop.value}</span><span class="control-help" id="exposure-shutter-label" style="display:inline;margin-left:7px">${currentStop.label}</span></span>
-            </div>
-            <div class="exposure-slider-wrap">
-              <input type="range" id="slider-absolute_exposure_time" min="0"
-                max="${KIYO_EXPOSURE_STOPS.length - 1}" step="1" value="${currentIndex}"
-                data-kiyo-stops="true"
-                oninput="previewKiyoExposure(this.value)"
-                onchange="commitNativeExposure(KIYO_EXPOSURE_STOPS[Math.round(Number(this.value))].value)">
-            </div>
-            <div class="control-help">Verified Kiyo shutter stops · displayed number is the native UVC value</div>
-            <div class="control-help" id="exposure-diagnostic">Release the slider to write and verify an exposure value.</div>
-          </div>`;
+          <div class="flow-slider" data-flow-manual-output>
+            <span>Exposure time</span>
+            <output for="slider-absolute_exposure_time"><span id="exposure-shutter-label">${currentStop.label}</span> · <span id="val-absolute_exposure_time">${currentStop.value}</span></output>
+            <input type="range" id="slider-absolute_exposure_time" aria-label="Exposure time" min="0"
+              max="${KIYO_EXPOSURE_STOPS.length - 1}" step="1" value="${currentIndex}"
+              data-kiyo-stops="true"
+              oninput="previewKiyoExposure(this.value)"
+              onchange="commitNativeExposure(KIYO_EXPOSURE_STOPS[Math.round(Number(this.value))].value)">
+          </div>
+          <p class="control-note flow-mono" id="exposure-diagnostic">Release to write and verify.</p>
+          ${info("The Kiyo reports a continuous range but only applies these verified shutter stops. The number after the shutter speed is the native UVC value.")}`;
       }
       return `
-        <div class="control-row">
-          <div class="control-header">
-            <span class="control-label">Exposure Time</span>
-            <span class="control-value" id="val-absolute_exposure_time">${currentValue}</span>
-          </div>
-          <div class="exposure-slider-wrap">
-            <input type="range" id="slider-absolute_exposure_time" min="${range.min}"
-              max="${range.max}" step="${range.resolution || 1}" value="${currentValue}"
-              oninput="document.getElementById('val-absolute_exposure_time').textContent=this.value"
-              onchange="commitNativeExposure(this.value)">
-          </div>
-          <div class="control-help">Native UVC units (${range.min}–${range.max})</div>
-          <div class="control-help" id="exposure-diagnostic">Release the slider to write and verify an exposure value.</div>
-        </div>`;
+        <div class="flow-slider" data-flow-manual-output>
+          <span>Exposure time</span>
+          <output for="slider-absolute_exposure_time" id="val-absolute_exposure_time">${currentValue}</output>
+          <input type="range" id="slider-absolute_exposure_time" aria-label="Exposure time" min="${range.min}"
+            max="${range.max}" step="${range.resolution || 1}" value="${currentValue}"
+            oninput="document.getElementById('val-absolute_exposure_time').textContent=this.value"
+            onchange="commitNativeExposure(this.value)">
+        </div>
+        <p class="control-note flow-mono" id="exposure-diagnostic">Release to write and verify.</p>
+        ${info(`Values are native UVC units (${range.min}–${range.max}).`)}`;
     }
 
     function renderControls(data) {
@@ -1720,14 +1367,14 @@
       const panel = document.getElementById("controls-panel");
 
       const toggleControls = [
-        { key: "auto_exposure_mode", label: "Auto Exposure", isAuto: (v) => v === 8, onVal: 8, offVal: 1 },
-        { key: "auto_exposure_priority", label: "Exposure Priority", isAuto: (v) => v === 1, onVal: 1, offVal: 0 },
-        { key: "auto_focus", label: "Auto Focus", isAuto: (v) => v === 1, onVal: 1, offVal: 0 },
-        { key: "auto_white_balance_temperature", label: "Auto White Balance", isAuto: (v) => v === 1, onVal: 1, offVal: 0 },
+        { key: "auto_exposure_mode", label: "Auto exposure", isAuto: (v) => v === 8, onVal: 8, offVal: 1 },
+        { key: "auto_exposure_priority", label: "Exposure priority", isAuto: (v) => v === 1, onVal: 1, offVal: 0 },
+        { key: "auto_focus", label: "Auto focus", isAuto: (v) => v === 1, onVal: 1, offVal: 0 },
+        { key: "auto_white_balance_temperature", label: "Auto white balance", isAuto: (v) => v === 1, onVal: 1, offVal: 0 },
       ];
 
       const exposureSliders = [
-        { key: "absolute_exposure_time", label: "Exposure Time" },
+        { key: "absolute_exposure_time", label: "Exposure time" },
         { key: "gain", label: "Gain (ISO)" },
       ];
 
@@ -1736,48 +1383,35 @@
         { key: "contrast", label: "Contrast" },
         { key: "saturation", label: "Saturation" },
         { key: "sharpness", label: "Sharpness" },
-        { key: "white_balance_temperature", label: "White Balance (K)" },
+        { key: "white_balance_temperature", label: "White balance (K)" },
       ];
 
       const lensSliders = [
-        { key: "absolute_focus", label: "Focus Distance" },
+        { key: "absolute_focus", label: "Focus distance" },
         { key: "absolute_zoom", label: "Zoom" },
       ];
 
-      function sliderHTML(s) {
+      function controlSliderHTML(s) {
         const range = ranges[s.key];
         if (!range) return "";
         const val = values[s.key] ?? range.min;
         if (s.key === "absolute_exposure_time") {
           return exposureSliderHTML(range, val);
         }
-        return `
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">${s.label}</span>
-              <input class="control-value-input" type="number" id="val-${s.key}"
-                min="${range.min}" max="${range.max}" step="1" value="${val}"
-                onchange="commitNumericControl('${s.key}', this, ${range.min}, ${range.max})"
-                onkeydown="handleEditableValueKey(event)" aria-label="${s.label} value">
-            </div>
-            <input type="range" id="slider-${s.key}" min="${range.min}" max="${range.max}" value="${val}"
-              oninput="document.getElementById('val-${s.key}').value=this.value; setControl('${s.key}', Number(this.value))">
-          </div>`;
+        return sliderHTML({
+          id: `slider-${s.key}`,
+          valueId: `val-${s.key}`,
+          label: s.label,
+          min: range.min, max: range.max, value: val,
+          onInput: `document.getElementById('val-${s.key}').value=this.value; setControl('${s.key}', Number(this.value))`,
+          onCommit: `commitNumericControl('${s.key}', this, ${range.min}, ${range.max})`,
+        });
       }
 
       function toggleHTML(t) {
-        const val = values[t.key];
-        const checked = t.isAuto(val) ? "checked" : "";
         return `
-          <div class="toggle-row">
-            <span class="toggle-label">${t.label}</span>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-${t.key}" ${checked}
-                onchange="setToggleControl('${t.key}', this, ${t.onVal}, ${t.offVal})">
-              <span class="toggle-track"></span>
-              <span class="toggle-knob"></span>
-            </label>
-          </div>`;
+          <button class="flow-button" id="toggle-${t.key}" aria-pressed="${t.isAuto(values[t.key])}"
+            onclick="setToggleControl('${t.key}', this, ${t.onVal}, ${t.offVal})">${t.label}</button>`;
       }
 
       const panVal = values.absolute_pan_tilt || [0, 0];
@@ -1787,80 +1421,82 @@
       const backlightVal = values.backlight_compensation ?? 0;
 
       panel.innerHTML = `
-        <div class="panel-section">
-          <h2>Auto Modes</h2>
-          ${toggleControls.map(toggleHTML).join("")}
+        <div class="flow-panel-header">
+          <h2 class="flow-panel-title">Controls</h2>
         </div>
 
-        <div class="panel-section">
-          <h2>Exposure</h2>
-          ${exposureSliders.map(sliderHTML).join("")}
+        <div class="flow-section">
+          <h3 class="flow-section-title">Auto modes</h3>
+          <div class="flow-grid">${toggleControls.map(toggleHTML).join("")}</div>
         </div>
 
-        <div class="panel-section">
-          <h2>Image</h2>
-          ${imageSliders.map(sliderHTML).join("")}
+        <div class="flow-section">
+          <h3 class="flow-section-title">Exposure
+            <button class="flow-info-button" data-flow-open="exposure-info" aria-label="About exposure time" aria-haspopup="dialog">i</button>
+          </h3>
+          <div class="flow-stack">${exposureSliders.map(controlSliderHTML).join("")}</div>
         </div>
 
-        <div class="panel-section">
-          <h2>Lens</h2>
-          ${lensSliders.map(sliderHTML).join("")}
-          <div class="pan-tilt-grid">
-            <div class="control-row">
-              <div class="control-header">
-                <span class="control-label">Pan</span>
-                <input class="control-value-input" type="number" id="val-pan" min="${panRange.min[0]}" max="${panRange.max[0]}" step="1" value="${panVal[0]}"
-                  onchange="setPanTiltValue('pan', this, ${panRange.min[0]}, ${panRange.max[0]})" onkeydown="handleEditableValueKey(event)" aria-label="Pan value">
-              </div>
-              <input type="range" id="slider-pan" min="${panRange.min[0]}" max="${panRange.max[0]}" value="${panVal[0]}"
-                oninput="document.getElementById('val-pan').value=this.value; setControl('absolute_pan_tilt', [Number(this.value), Number(document.getElementById('slider-tilt').value)])">
-            </div>
-            <div class="control-row">
-              <div class="control-header">
-                <span class="control-label">Tilt</span>
-                <input class="control-value-input" type="number" id="val-tilt" min="${panRange.min[1]}" max="${panRange.max[1]}" step="1" value="${panVal[1]}"
-                  onchange="setPanTiltValue('tilt', this, ${panRange.min[1]}, ${panRange.max[1]})" onkeydown="handleEditableValueKey(event)" aria-label="Tilt value">
-              </div>
-              <input type="range" id="slider-tilt" min="${panRange.min[1]}" max="${panRange.max[1]}" value="${panVal[1]}"
-                oninput="document.getElementById('val-tilt').value=this.value; setControl('absolute_pan_tilt', [Number(document.getElementById('slider-pan').value), Number(this.value)])">
-            </div>
+        <div class="flow-section">
+          <h3 class="flow-section-title">Image</h3>
+          <div class="flow-stack">${imageSliders.map(controlSliderHTML).join("")}</div>
+        </div>
+
+        <div class="flow-section">
+          <h3 class="flow-section-title">Lens</h3>
+          <div class="flow-stack">
+            ${lensSliders.map(controlSliderHTML).join("")}
+            ${sliderHTML({
+              id: "slider-pan", valueId: "val-pan", label: "Pan",
+              min: panRange.min[0], max: panRange.max[0], value: panVal[0],
+              onInput: "document.getElementById('val-pan').value=this.value; setControl('absolute_pan_tilt', [Number(this.value), Number(document.getElementById('slider-tilt').value)])",
+              onCommit: `setPanTiltValue('pan', this, ${panRange.min[0]}, ${panRange.max[0]})`,
+            })}
+            ${sliderHTML({
+              id: "slider-tilt", valueId: "val-tilt", label: "Tilt",
+              min: panRange.min[1], max: panRange.max[1], value: panVal[1],
+              onInput: "document.getElementById('val-tilt').value=this.value; setControl('absolute_pan_tilt', [Number(document.getElementById('slider-pan').value), Number(this.value)])",
+              onCommit: `setPanTiltValue('tilt', this, ${panRange.min[1]}, ${panRange.max[1]})`,
+            })}
           </div>
         </div>
 
-        <div class="panel-section">
-          <h2>Other</h2>
-          <div class="toggle-row">
-            <span class="toggle-label">Backlight Compensation</span>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-backlight_compensation" ${backlightVal ? "checked" : ""}
-                onchange="setToggleControl('backlight_compensation', this, 1, 0)">
-              <span class="toggle-track"></span>
-              <span class="toggle-knob"></span>
+        <div class="flow-section">
+          <h3 class="flow-section-title">Other
+            <button class="flow-info-button" data-flow-open="backlight-info" aria-label="About backlight compensation" aria-haspopup="dialog">i</button>
+          </h3>
+          <div class="flow-stack">
+            <button class="flow-button" id="toggle-backlight_compensation" aria-pressed="${Boolean(backlightVal)}"
+              onclick="setToggleControl('backlight_compensation', this, 1, 0)">Backlight compensation</button>
+            <label class="flow-field">
+              <span>Power line frequency</span>
+              <select onchange="setControl('power_line_frequency', Number(this.value))">
+                <option value="0" ${powerLineVal === 0 ? "selected" : ""}>Disabled</option>
+                <option value="1" ${powerLineVal === 1 ? "selected" : ""}>50 Hz</option>
+                <option value="2" ${powerLineVal === 2 ? "selected" : ""}>60 Hz</option>
+              </select>
             </label>
           </div>
-          <div class="control-help" style="margin-bottom:14px">Effect is camera- and scene-dependent; the switch reflects the value confirmed by the Kiyo.</div>
-          <div class="control-row">
-            <div class="control-header">
-              <span class="control-label">Power Line Frequency</span>
-            </div>
-            <select class="select-control" onchange="setControl('power_line_frequency', Number(this.value))">
-              <option value="0" ${powerLineVal === 0 ? "selected" : ""}>Disabled</option>
-              <option value="1" ${powerLineVal === 1 ? "selected" : ""}>50 Hz</option>
-              <option value="2" ${powerLineVal === 2 ? "selected" : ""}>60 Hz</option>
-            </select>
-          </div>
+          <dialog class="flow-popup" id="backlight-info" aria-labelledby="backlight-info-title">
+            <header><h2 id="backlight-info-title">Backlight compensation</h2>
+              <button class="flow-popup-close" data-flow-close aria-label="Close backlight information">×</button>
+            </header>
+            <p>The effect is camera- and scene-dependent. The button shows the value the camera confirms after each write.</p>
+          </dialog>
         </div>
 
-        <div class="preset-section">
-          <h2>Presets</h2>
-          <div class="preset-actions">
-            <input type="text" id="preset-name" placeholder="Preset name...">
-            <button class="btn btn-primary" onclick="savePreset()">Save</button>
+        <div class="flow-section">
+          <h3 class="flow-section-title">Presets</h3>
+          <div class="preset-save">
+            <input class="flow-input" type="text" id="preset-name" placeholder="Preset name" aria-label="Preset name"
+              onkeydown="if (event.key === 'Enter') savePreset()">
+            <button class="flow-button flow-button--primary" onclick="savePreset()">Save</button>
           </div>
           <div class="preset-list" id="preset-list"></div>
         </div>
       `;
 
+      flowUI.refresh();
       loadPresets();
     }
 
@@ -1868,18 +1504,18 @@
       const presets = await api("GET", "/presets");
       const list = document.getElementById("preset-list");
       if (!presets.length) {
-        list.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:8px 0">No presets saved yet</div>';
+        list.innerHTML = '<div class="flow-status">No presets saved yet</div>';
         return;
       }
       list.innerHTML = presets.map(p => `
         <div class="preset-item">
-          <div>
+          <div class="preset-item-text">
             <div class="preset-item-name">${p.name}</div>
             <div class="preset-item-date">${new Date(p.savedAt).toLocaleDateString()}</div>
           </div>
           <div class="preset-item-actions">
-            <button class="btn btn-secondary" onclick="loadPreset('${p.name}')">Load</button>
-            <button class="btn btn-danger" onclick="deletePreset('${p.name}')">Delete</button>
+            <button class="flow-text-button" onclick="loadPreset('${p.name}')" aria-label="Load preset ${p.name}">Load</button>
+            <button class="flow-text-button" onclick="deletePreset('${p.name}')" aria-label="Delete preset ${p.name}">Delete</button>
           </div>
         </div>
       `).join("");
@@ -1913,24 +1549,22 @@
 
     async function loadControls(retries = 2) {
       if (!selectedDevice) return;
-      const dot = document.getElementById("status-dot");
       try {
         const data = await api("GET", `/controls${devQuery()}`);
         renderControls(data);
-        dot.classList.remove("offline");
+        setStatus(true);
       } catch (e) {
         if (retries > 0) {
           setTimeout(() => loadControls(retries - 1), 2000);
           return;
         }
-        dot.classList.add("offline");
+        setStatus(false);
         document.getElementById("controls-panel").innerHTML =
-          '<div class="loading">Could not load controls — click Refresh to retry</div>';
+          '<div class="cam-empty">Could not load controls — click Refresh to retry</div>';
       }
     }
 
     async function init(retries = 6) {
-      const dot = document.getElementById("status-dot");
       const select = document.getElementById("device-select");
       try {
         const devices = await api("GET", "/devices");
@@ -1941,7 +1575,7 @@
             `<option value="${i}">${d.name}</option>`
           ).join("");
           selectedDevice = devices[0];
-          dot.classList.remove("offline");
+          setStatus(true);
           startPreview(selectedDevice.name);
           loadControls();
         } else if (retries > 0) {
@@ -1950,19 +1584,19 @@
           return;
         } else {
           select.innerHTML = '<option value="">No cameras found</option>';
-          dot.classList.add("offline");
+          setStatus(false);
           document.getElementById("controls-panel").innerHTML =
-            '<div class="loading">No cameras detected — connect a camera and click Refresh</div>';
+            '<div class="cam-empty">No cameras detected — connect a camera and click Refresh</div>';
         }
       } catch (e) {
         if (retries > 0) {
           setTimeout(() => init(retries - 1), 2000);
           return;
         }
-        dot.classList.add("offline");
+        setStatus(false);
         select.innerHTML = '<option value="">No cameras found</option>';
         document.getElementById("controls-panel").innerHTML =
-          '<div class="loading">Could not connect to server</div>';
+          '<div class="cam-empty">Could not connect to server</div>';
       }
     }
 
