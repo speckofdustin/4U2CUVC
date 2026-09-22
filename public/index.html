@@ -60,6 +60,7 @@
     }
     .preview-stage video {
       display: block;
+      object-position: center;
       width: 100%;
       height: 100%;
       object-fit: contain;
@@ -75,6 +76,9 @@
       pointer-events: none;
       display: none;
     }
+    .preview-stage[data-fit="cover"] video,
+    .preview-stage[data-fit="cover"] #false-color-overlay,
+    .preview-stage[data-fit="cover"] #skin-tone-overlay { object-fit: cover; }
     .preview-message {
       position: absolute;
       inset: 0;
@@ -162,22 +166,25 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
     }
-    /* Deviation: scope plots are data surfaces and stay black
-       in both themes so traces read the same regardless of chrome. */
+    /* Scopes sit on the panel paper: traces and graticule are drawn in the
+       theme's ink (dark on light, light on dark). */
     .scope {
       position: relative;
       min-height: 0;
       overflow: hidden;
+      border: 1px solid var(--flow-line);
       border-radius: var(--flow-control-radius);
-      background: #000;
     }
     .scope-label {
       position: absolute;
-      top: 6px;
-      left: 8px;
+      top: 5px;
+      right: 6px;
+      padding: 0 4px;
+      border-radius: 3px;
+      background: var(--flow-paper);
       z-index: 2;
       font: 10px var(--flow-mono);
-      color: #9a9f91;
+      color: var(--flow-muted);
       pointer-events: none;
     }
     .scope-canvas { display: block; width: 100%; height: 100%; }
@@ -319,6 +326,13 @@
         <button class="flow-button" id="btn-false-color" aria-pressed="false" onclick="toggleFalseColor()">False color</button>
         <button class="flow-button" id="btn-skin-tone" aria-pressed="false" onclick="toggleSkinTone()">Skin tone</button>
         <label class="flow-field">
+          <span>Frame</span>
+          <select id="fit-select" onchange="setPreviewFit(this.value)" aria-label="Frame the preview">
+            <option value="contain">Fit</option>
+            <option value="cover">Fill</option>
+          </select>
+        </label>
+        <label class="flow-field">
           <span>FPS</span>
           <select id="fps-select" onchange="changePreviewFrameRate(Number(this.value))">
             <option value="0">Auto</option>
@@ -409,14 +423,28 @@
     // setting slider values programmatically or re-rendering sliders.
     const flowUI = FlowUI.mount(document.body);
 
+    // Scope colors follow the theme; startScopes() replaces this redraw hook.
+    let scopePalette = null;
+    let redrawScopeBackgrounds = () => {};
+
     function setTheme(theme) {
       document.body.dataset.flowTheme = theme;
+      scopePalette = readScopePalette();
+      redrawScopeBackgrounds();
       document.querySelectorAll("[data-theme-choice]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.themeChoice === theme));
       });
       try { localStorage.setItem("4u2c-theme", theme); } catch (e) {}
     }
     setTheme(document.body.dataset.flowTheme);
+
+    function setPreviewFit(fit) {
+      if (fit !== "contain" && fit !== "cover") fit = "contain";
+      document.getElementById("preview-stage").dataset.fit = fit;
+      document.getElementById("fit-select").value = fit;
+      try { localStorage.setItem("4u2c-fit", fit); } catch (e) {}
+    }
+    try { setPreviewFit(localStorage.getItem("4u2c-fit")); } catch (e) { setPreviewFit("contain"); }
 
     function setStatus(online) {
       const dot = document.getElementById("status-dot");
@@ -684,14 +712,33 @@
       const cr = (0.5 * r - 0.418688 * g - 0.081312 * b) / 128;
       return { cb, cr };
     }
+    // Target colors have a light-surround variant so yellow/cyan stay legible
+    // on the light panel; positions are the same in both themes.
     const VS_TARGETS = [
-      { label: "R",  ...cbcr(191, 0, 0),     color: "#ff4444" },
-      { label: "YL", ...cbcr(191, 191, 0),    color: "#ffff00" },
-      { label: "G",  ...cbcr(0, 191, 0),      color: "#44ff44" },
-      { label: "CY", ...cbcr(0, 191, 191),    color: "#00ffff" },
-      { label: "B",  ...cbcr(0, 0, 191),      color: "#4444ff" },
-      { label: "MG", ...cbcr(191, 0, 191),    color: "#ff44ff" },
+      { label: "R",  ...cbcr(191, 0, 0),     dark: "#ff4444", light: "#c62828" },
+      { label: "YL", ...cbcr(191, 191, 0),    dark: "#ffff00", light: "#8f7a00" },
+      { label: "G",  ...cbcr(0, 191, 0),      dark: "#44ff44", light: "#2e8b3a" },
+      { label: "CY", ...cbcr(0, 191, 191),    dark: "#00ffff", light: "#00808c" },
+      { label: "B",  ...cbcr(0, 0, 191),      dark: "#4444ff", light: "#2f45c8" },
+      { label: "MG", ...cbcr(191, 0, 191),    dark: "#ff44ff", light: "#a8329f" },
     ];
+
+    function readScopePalette() {
+      const hex = getComputedStyle(document.body).getPropertyValue("--flow-ink").trim();
+      const ink = /^#[\da-f]{6}/i.test(hex)
+        ? [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+        : [128, 128, 128];
+      const dark = document.body.dataset.flowTheme === "dark";
+      const rgba = (a) => `rgba(${ink.join(",")},${a})`;
+      return {
+        ink,
+        dark,
+        grid: rgba(dark ? 0.1 : 0.12),
+        label: rgba(0.45),
+        skinLine: dark ? "rgba(255,180,100,0.4)" : "rgba(180,100,30,0.5)",
+        skinLabel: dark ? "rgba(255,180,100,0.6)" : "rgba(180,100,30,0.8)",
+      };
+    }
 
     // Skin tone direction in Cb/Cr space (typical Caucasian/warm skin)
     const SKIN_CB = cbcr(200, 150, 120).cb;
@@ -701,11 +748,11 @@
       const cx = w / 2, cy = h / 2;
       const maxR = Math.min(cx, cy) - 16;
 
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, w, h);
+      const pal = scopePalette;
+      ctx.clearRect(0, 0, w, h);
 
       // graticule circles
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.strokeStyle = pal.grid;
       ctx.lineWidth = 0.5;
       for (let i = 1; i <= 4; i++) {
         ctx.beginPath();
@@ -723,7 +770,7 @@
       const skinLen = Math.sqrt(SKIN_CB * SKIN_CB + SKIN_CR * SKIN_CR);
       const skinDx = (SKIN_CB / skinLen) * maxR;
       const skinDy = -(SKIN_CR / skinLen) * maxR;
-      ctx.strokeStyle = "rgba(255,180,100,0.35)";
+      ctx.strokeStyle = pal.skinLine;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
@@ -732,7 +779,7 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = "rgba(255,180,100,0.5)";
+      ctx.fillStyle = pal.skinLabel;
       ctx.font = SCOPE_FONT;
       ctx.fillText("SKIN", cx + skinDx * 1.05, cy + skinDy * 1.05);
 
@@ -740,12 +787,13 @@
       for (const t of VS_TARGETS) {
         const tx = cx + t.cb * maxR;
         const ty = cy - t.cr * maxR;
-        ctx.strokeStyle = t.color;
+        const color = pal.dark ? t.dark : t.light;
+        ctx.strokeStyle = color;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.rect(tx - 5, ty - 5, 10, 10);
         ctx.stroke();
-        ctx.fillStyle = t.color;
+        ctx.fillStyle = color;
         ctx.font = SCOPE_FONT_BOLD;
         ctx.textAlign = "center";
         ctx.fillText(t.label, tx, ty - 8);
@@ -765,13 +813,13 @@
     }
 
     function drawWaveformBackground(ctx, w, h) {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, w, h);
+      const pal = scopePalette;
+      ctx.clearRect(0, 0, w, h);
 
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.strokeStyle = pal.grid;
       ctx.lineWidth = 0.5;
       ctx.font = SCOPE_FONT;
-      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.fillStyle = pal.label;
       ctx.textAlign = "right";
 
       const labels = [100, 75, 50, 25, 0];
@@ -786,6 +834,45 @@
         ctx.fillText(`${ire}`, pad - 4, y + 3);
       }
       ctx.textAlign = "start";
+    }
+
+    // Paint accumulated scope hits as ink with intensity-driven alpha onto a
+    // transparent layer, then composite graticule + traces onto the scope.
+    function paintScope(scope, canvas, background, layer, accum) {
+      const dpr = window.devicePixelRatio || 1;
+      if (layer.width !== canvas.width || layer.height !== canvas.height) {
+        layer.width = canvas.width;
+        layer.height = canvas.height;
+      }
+      const layerCtx = layer.getContext("2d");
+      const img = layerCtx.createImageData(layer.width, layer.height);
+      const px = img.data;
+      const [ir, ig, ib] = scopePalette.ink;
+      const accW = Math.ceil(scope.w), accH = Math.ceil(scope.h);
+      const block = Math.max(1, Math.round(dpr));
+      for (let y = 0; y < accH; y++) {
+        for (let x = 0; x < accW; x++) {
+          const val = accum[y * accW + x];
+          if (val <= 0.01) continue;
+          const alpha = Math.round(80 + 175 * Math.min(val, 1.0));
+          const bx = Math.floor(x * dpr), by = Math.floor(y * dpr);
+          for (let dy = 0; dy < block; dy++) {
+            if (by + dy >= layer.height) break;
+            for (let dx = 0; dx < block; dx++) {
+              if (bx + dx >= layer.width) break;
+              const pi = ((by + dy) * layer.width + (bx + dx)) * 4;
+              px[pi] = ir;
+              px[pi + 1] = ig;
+              px[pi + 2] = ib;
+              px[pi + 3] = alpha;
+            }
+          }
+        }
+      }
+      layerCtx.putImageData(img, 0, 0);
+      scope.ctx.clearRect(0, 0, scope.w, scope.h);
+      scope.ctx.drawImage(background, 0, 0, scope.w, scope.h);
+      scope.ctx.drawImage(layer, 0, 0, scope.w, scope.h);
     }
 
     // ── Scope engine ──
@@ -810,19 +897,25 @@
       let wf = initWaveform(wfCanvas);
 
       const vsBackground = document.createElement("canvas");
-      vsBackground.width = vsCanvas.width;
-      vsBackground.height = vsCanvas.height;
-      const vsBgCtx = vsBackground.getContext("2d");
-      const dpr = window.devicePixelRatio || 1;
-      vsBgCtx.scale(dpr, dpr);
-      drawVectorscopeBackground(vsBgCtx, vs.w, vs.h);
-
       const wfBackground = document.createElement("canvas");
-      wfBackground.width = wfCanvas.width;
-      wfBackground.height = wfCanvas.height;
-      const wfBgCtx = wfBackground.getContext("2d");
-      wfBgCtx.scale(dpr, dpr);
-      drawWaveformBackground(wfBgCtx, wf.w, wf.h);
+      const vsLayer = document.createElement("canvas");
+      const wfLayer = document.createElement("canvas");
+
+      redrawScopeBackgrounds = () => {
+        const dpr = window.devicePixelRatio || 1;
+        vsBackground.width = vsCanvas.width;
+        vsBackground.height = vsCanvas.height;
+        const vsBgCtx = vsBackground.getContext("2d");
+        vsBgCtx.scale(dpr, dpr);
+        drawVectorscopeBackground(vsBgCtx, vs.w, vs.h);
+
+        wfBackground.width = wfCanvas.width;
+        wfBackground.height = wfCanvas.height;
+        const wfBgCtx = wfBackground.getContext("2d");
+        wfBgCtx.scale(dpr, dpr);
+        drawWaveformBackground(wfBgCtx, wf.w, wf.h);
+      };
+      redrawScopeBackgrounds();
 
       let lastFrame = 0;
       const TARGET_FPS = 24;
@@ -870,30 +963,7 @@
           }
         }
 
-        vs.ctx.clearRect(0, 0, vs.w, vs.h);
-        vs.ctx.drawImage(vsBackground, 0, 0, vs.w, vs.h);
-
-        const vsImg = vs.ctx.getImageData(0, 0, vsCanvas.width, vsCanvas.height);
-        const vsPixels = vsImg.data;
-        const dprW = vsCanvas.width;
-        for (let y = 0; y < Math.ceil(vs.h); y++) {
-          for (let x = 0; x < vsW; x++) {
-            const val = vsAccum[y * vsW + x];
-            if (val > 0.01) {
-              const intensity = Math.min(val, 1.0);
-              for (let dy = 0; dy < dpr; dy++) {
-                for (let dx = 0; dx < dpr; dx++) {
-                  const pi = ((y * dpr + dy) * dprW + (x * dpr + dx)) * 4;
-                  const lum = Math.round(80 + 175 * intensity);
-                  vsPixels[pi] = Math.max(vsPixels[pi], lum);
-                  vsPixels[pi + 1] = Math.max(vsPixels[pi + 1], lum);
-                  vsPixels[pi + 2] = Math.max(vsPixels[pi + 2], lum);
-                }
-              }
-            }
-          }
-        }
-        vs.ctx.putImageData(vsImg, 0, 0);
+        paintScope(vs, vsCanvas, vsBackground, vsLayer, vsAccum);
 
         // ── Waveform rendering ──
         const wfPad = 30;
@@ -924,30 +994,7 @@
           }
         }
 
-        wf.ctx.clearRect(0, 0, wf.w, wf.h);
-        wf.ctx.drawImage(wfBackground, 0, 0, wf.w, wf.h);
-
-        const wfImg = wf.ctx.getImageData(0, 0, wfCanvas.width, wfCanvas.height);
-        const wfPixelsData = wfImg.data;
-        const wfDprW = wfCanvas.width;
-        for (let y = 0; y < wfH; y++) {
-          for (let x = 0; x < wfW; x++) {
-            const val = wfAccum[y * wfW + x];
-            if (val > 0.01) {
-              const intensity = Math.min(val, 1.0);
-              for (let dy = 0; dy < dpr; dy++) {
-                for (let dx = 0; dx < dpr; dx++) {
-                  const pi = ((y * dpr + dy) * wfDprW + (x * dpr + dx)) * 4;
-                  const lum = Math.round(80 + 175 * intensity);
-                  wfPixelsData[pi] = Math.max(wfPixelsData[pi], lum);
-                  wfPixelsData[pi + 1] = Math.max(wfPixelsData[pi + 1], lum);
-                  wfPixelsData[pi + 2] = Math.max(wfPixelsData[pi + 2], lum);
-                }
-              }
-            }
-          }
-        }
-        wf.ctx.putImageData(wfImg, 0, 0);
+        paintScope(wf, wfCanvas, wfBackground, wfLayer, wfAccum);
 
         // ── False color overlay ──
         if (falseColorEnabled) {
@@ -1002,17 +1049,7 @@
         vs = initVectorscope(vsCanvas);
         wf = initWaveform(wfCanvas);
 
-        vsBackground.width = vsCanvas.width;
-        vsBackground.height = vsCanvas.height;
-        const vsBgCtx2 = vsBackground.getContext("2d");
-        vsBgCtx2.scale(dpr, dpr);
-        drawVectorscopeBackground(vsBgCtx2, vs.w, vs.h);
-
-        wfBackground.width = wfCanvas.width;
-        wfBackground.height = wfCanvas.height;
-        const wfBgCtx2 = wfBackground.getContext("2d");
-        wfBgCtx2.scale(dpr, dpr);
-        drawWaveformBackground(wfBgCtx2, wf.w, wf.h);
+        redrawScopeBackgrounds();
 
         vsAccum = null;
         wfAccum = null;

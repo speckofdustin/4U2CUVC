@@ -14,7 +14,7 @@ Use Color Flow design system **v0.1.0** from `/Users/dustin/Documents/codex/Colo
 1. **Editable slider values.** `.flow-slider` normally shows a read-only `<output>`. Here most sliders carry a `.cam-slider-value` number field (built by `sliderHTML()` in `public/index.html`) layered above the invisible range input, so exact values can be typed. The exposure slider keeps a read-only output because it commits and verifies on release.
 2. **Status dot.** Green/red connection indicator in the header. Color Flow has no status palette, but the color carries meaning (camera connected vs. offline), so it is kept. It also has an `aria-label`.
 3. **Toast.** Color Flow has no toast; a local paper-sheet toast is used for transient results and errors.
-4. **Black scope and preview surfaces.** The video stage, vectorscope, and waveform stay black in both themes. They are data surfaces, and their graticule, targets, and false color / skin marker colors are data colors independent of chrome.
+4. **Black preview stage.** The video stage stays black in both themes (letterbox around Fit). Scopes are *not* black: they sit on the panel paper with traces and graticule in the theme's ink, and vectorscope targets use a darker variant in light mode for legibility (`readScopePalette()` / `VS_TARGETS`). False color and the skin marker keep fixed data colors.
 5. **Toggles as pressed buttons, app-owned state.** UVC auto modes and backlight compensation use `.flow-button[aria-pressed]` without `data-flow-toggle`: the app sets `aria-pressed` from the value the camera confirms and reverts on failure.
 
 Not in scope: an iOS/mobile app. The narrow (≤900px) layout just stacks the browser UI.
