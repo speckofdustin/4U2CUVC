@@ -12,6 +12,29 @@
     /* App layout and local variants. Component styling comes from Color Flow;
        everything here is scoped to this app and uses --flow-* tokens. */
     html, body { margin: 0; height: 100%; }
+
+    /* Deviation: neutral grays instead of Color Flow's olive-tinted chrome.
+       Each value is the luminance-matched gray of the v0.1.0 token, with the
+       same alpha, so contrast and hierarchy are unchanged. */
+    body.flow-ui {
+      --flow-background: #f0f0f0;
+      --flow-paper: #f9f9f9f5;
+      --flow-ink: #333333;
+      --flow-muted: #797979;
+      --flow-line: #3a3a3a26;
+      --flow-well: #5a5a5a0c;
+      --flow-active: #59595918;
+      --flow-panel-shadow: 0 8px 28px #00000008;
+    }
+    body.flow-ui[data-flow-theme="dark"] {
+      --flow-background: #161616;
+      --flow-paper: #242424ee;
+      --flow-ink: #e3e3e3;
+      --flow-muted: #9d9d9d;
+      --flow-line: #dfdfdf25;
+      --flow-well: #e0e0e00b;
+      --flow-active: #e0e0e020;
+    }
     body.flow-ui { overflow: hidden; }
 
     .app {
@@ -82,7 +105,7 @@
       display: none;
       place-items: center;
       padding: 24px;
-      color: #9a9f91;
+      color: #9d9d9d;
       font-size: 11px;
       text-align: center;
       pointer-events: none;

@@ -16,5 +16,6 @@ Use Color Flow design system **v0.1.0** from `/Users/dustin/Documents/codex/Colo
 3. **Toast.** Color Flow has no toast; a local paper-sheet toast is used for transient results and errors.
 4. **Black preview stage.** The video stage stays black in both themes (letterbox around Fit). Scopes are *not* black: they sit on the panel paper with traces and graticule in the theme's ink, and vectorscope targets use a darker variant in light mode for legibility (`readScopePalette()` / `VS_TARGETS`). False color and the skin marker keep fixed data colors.
 5. **Toggles as pressed buttons, app-owned state.** UVC auto modes and backlight compensation use `.flow-button[aria-pressed]` without `data-flow-toggle`: the app sets `aria-pressed` from the value the camera confirms and reverts on failure.
+6. **Neutral gray chrome.** Color Flow's chrome tokens carry a subtle warm/olive tint; this app overrides them with luminance-matched neutral grays (same alpha) on `body.flow-ui` in `public/index.html`, for both themes, plus a neutral panel shadow. The vendored `tokens.css` is untouched. Data colors (false color, scope targets, skin marker, status dot) are unaffected.
 
 Not in scope: an iOS/mobile app. The narrow (≤900px) layout just stacks the browser UI.
