@@ -357,7 +357,7 @@
     <section class="flow-panel flow-palette scopes-panel" aria-labelledby="scopes-title">
       <div class="flow-panel-header">
         <h2 class="flow-panel-title" id="scopes-title">Scopes</h2>
-        <span class="flow-status" id="scope-note">Rec.709 luma · BT.601 chroma</span>
+        <span class="flow-status" id="scope-note">Rec.709</span>
       </div>
       <div class="scopes-grid">
         <div class="scope">
@@ -423,6 +423,13 @@
     const SAMPLE_W = 320;
     const SAMPLE_H = 180;
     const DECAY = 0.85;
+
+    // Rec.709 Y'CbCr from 8-bit R'G'B' (Kr = 0.2126, Kb = 0.0722). Luma is
+    // 0..1 of full scale; Cb/Cr are divided by 128 so ±0.5 full-scale chroma
+    // reaches ±~1, the vectorscope's outer radius.
+    const Y_R = 0.2126, Y_G = 0.7152, Y_B = 0.0722;
+    const CB_R = -0.114572, CB_G = -0.385428, CB_B = 0.5;
+    const CR_R = 0.5, CR_G = -0.454153, CR_B = -0.045847;
     const SCOPE_FONT = '9px ui-monospace, "SFMono-Regular", Menlo, monospace';
     const SCOPE_FONT_BOLD = '600 8px ui-monospace, "SFMono-Regular", Menlo, monospace';
 
@@ -633,11 +640,15 @@
     }
 
     // ── Skin Tone Indicator ──
-    // Rec.709 skin tone qualifier defaults (YCbCr)
+    // Rec.709 skin tone qualifier defaults (Cb/Cr normalized as in cbcr()).
+    // Wide enough for the Monk Skin Tone scale and saturated tan/brown skin
+    // (Cb down to about -0.32) and for shadowed or deep skin (luma to ~12 IRE).
+    // Cr >= 0.04 keeps warm near-neutrals (dark walls, shelves) out. Checked on
+    // live Kiyo footage 2026-09-23: 99-100% of face regions qualify.
     const DEFAULT_SKIN_QUALIFIER = Object.freeze({
-      cbMin: -0.18, cbMax: 0.08,
-      crMin: 0.05,  crMax: 0.42,
-      lumaMin: 20,  lumaMax: 80,
+      cbMin: -0.34, cbMax: 0.08,
+      crMin: 0.04,  crMax: 0.42,
+      lumaMin: 12,  lumaMax: 90,
     });
     let skinQual = { ...DEFAULT_SKIN_QUALIFIER };
 
@@ -661,9 +672,9 @@
     flowUI.refresh();
 
     function isSkinTone(r, g, b) {
-      const cbN = (-0.168736 * r - 0.331264 * g + 0.5 * b) / 128;
-      const crN = (0.5 * r - 0.418688 * g - 0.081312 * b) / 128;
-      const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 * 100;
+      const cbN = (CB_R * r + CB_G * g + CB_B * b) / 128;
+      const crN = (CR_R * r + CR_G * g + CR_B * b) / 128;
+      const luma = (Y_R * r + Y_G * g + Y_B * b) / 255 * 100;
       return cbN >= skinQual.cbMin && cbN <= skinQual.cbMax &&
              crN >= skinQual.crMin && crN <= skinQual.crMax &&
              luma >= skinQual.lumaMin && luma <= skinQual.lumaMax;
@@ -713,10 +724,10 @@
       return { ctx, w: rect.width, h: rect.height };
     }
 
-    // 75% color bar Cb/Cr values (BT.601), normalized to -1..+1
+    // Rec.709 Cb/Cr, normalized to -1..+1 (targets are 75% color bars)
     function cbcr(r, g, b) {
-      const cb = (-0.168736 * r - 0.331264 * g + 0.5 * b) / 128;
-      const cr = (0.5 * r - 0.418688 * g - 0.081312 * b) / 128;
+      const cb = (CB_R * r + CB_G * g + CB_B * b) / 128;
+      const cr = (CR_R * r + CR_G * g + CR_B * b) / 128;
       return { cb, cr };
     }
     // Target colors have a light-surround variant so yellow/cyan stay legible
@@ -747,9 +758,11 @@
       };
     }
 
-    // Skin tone direction in Cb/Cr space (typical Caucasian/warm skin)
-    const SKIN_CB = cbcr(200, 150, 120).cb;
-    const SKIN_CR = cbcr(200, 150, 120).cr;
+    // Skin tone line: the conventional I-line at 123° (counterclockwise from
+    // +Cb), as drawn on Rec.709 vectorscopes. Skin of all tones clusters near it.
+    const SKIN_LINE_ANGLE = 123 * Math.PI / 180;
+    const SKIN_CB = Math.cos(SKIN_LINE_ANGLE);
+    const SKIN_CR = Math.sin(SKIN_LINE_ANGLE);
 
     function drawVectorscopeBackground(ctx, w, h) {
       const cx = w / 2, cy = h / 2;
@@ -959,10 +972,8 @@
         for (let i = 0; i < pixels.length; i += 16) {
           const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
           if (scopeFilter && !isSkinTone(r, g, b)) continue;
-          const cb = 128 + (-0.168736 * r - 0.331264 * g + 0.5 * b);
-          const cr = 128 + (0.5 * r - 0.418688 * g - 0.081312 * b);
-          const nx = (cb - 128) / 128;
-          const ny = (cr - 128) / 128;
+          const nx = (CB_R * r + CB_G * g + CB_B * b) / 128;
+          const ny = (CR_R * r + CR_G * g + CR_B * b) / 128;
           const px = Math.round(vsCx + nx * vsMaxR);
           const py = Math.round(vsCy - ny * vsMaxR);
           if (px >= 0 && px < vs.w && py >= 0 && py < vs.h) {
@@ -996,7 +1007,7 @@
             const pi = (y * SAMPLE_W + x) * 4;
             const r = pixels[pi], g = pixels[pi + 1], b = pixels[pi + 2];
             if (scopeFilter && !isSkinTone(r, g, b)) continue;
-            const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+            const luma = (Y_R * r + Y_G * g + Y_B * b) / 255;
             const plotY = Math.round(4 + wfPlotH * (1 - luma));
             if (plotY < 0 || plotY >= wfH) continue;
             for (let plotX = Math.max(0, plotX0); plotX < Math.min(plotX1, wfW); plotX++) {
@@ -1016,7 +1027,7 @@
           const fcPx = fcImg.data;
           for (let i = 0; i < pixels.length; i += 4) {
             const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
-            const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            const luma = Y_R * r + Y_G * g + Y_B * b;
             const ire = (luma / 255) * 100;
             const c = falseColorLookup(ire);
             fcPx[i] = c.r;
@@ -1043,7 +1054,7 @@
               stPx[i + 2] = pixels[i + 2];
               stPx[i + 3] = 255;
             } else {
-              const luma = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+              const luma = Math.round(Y_R * r + Y_G * g + Y_B * b);
               stPx[i] = luma;
               stPx[i + 1] = luma;
               stPx[i + 2] = luma;
@@ -1308,7 +1319,7 @@
       const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       let total = 0;
       for (let i = 0; i < pixels.length; i += 4) {
-        total += 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
+        total += Y_R * pixels[i] + Y_G * pixels[i + 1] + Y_B * pixels[i + 2];
       }
       return total / (pixels.length / 4) / 255 * 100;
     }
