@@ -1160,10 +1160,10 @@
         actualPreviewFrameRate = Number(actualFrameRate) || 0;
         const frameRateCapability = trackCapabilities.frameRate;
         const capabilityText = frameRateCapability && Number.isFinite(frameRateCapability.min) && Number.isFinite(frameRateCapability.max)
-          ? ` · ${frameRateCapability.min}–${frameRateCapability.max} supported`
+          ? ` · ${fps(frameRateCapability.min)}–${fps(frameRateCapability.max)} supported`
           : "";
         document.getElementById("fps-actual").textContent = actualFrameRate
-          ? `${Number(actualFrameRate).toFixed(actualFrameRate % 1 ? 1 : 0)} negotiated${capabilityText}`
+          ? `${fps(actualFrameRate)} negotiated${capabilityText}`
           : "actual rate unavailable";
         startPreviewFpsMeasurement(video, capabilityText);
         message.style.display = "none";
@@ -1187,8 +1187,8 @@
           const oldRate = video.srcObject.getVideoTracks()[0]?.getSettings().frameRate;
           actualPreviewFrameRate = Number(oldRate) || actualPreviewFrameRate;
           document.getElementById("fps-actual").textContent = preferredFrameRate
-            ? `${actualPreviewFrameRate || "?"} actual · ${preferredFrameRate} unavailable`
-            : `${actualPreviewFrameRate || "?"} actual · Auto failed`;
+            ? `${actualPreviewFrameRate ? fps(actualPreviewFrameRate) : "?"} actual · ${preferredFrameRate} unavailable`
+            : `${actualPreviewFrameRate ? fps(actualPreviewFrameRate) : "?"} actual · Auto failed`;
           message.style.display = "none";
           toast(preferredFrameRate
             ? `${preferredFrameRate} FPS is not available in the current camera mode`
@@ -1198,6 +1198,11 @@
         message.textContent = `Preview unavailable: ${e.message}`;
         message.style.display = "grid";
       }
+    }
+
+    // Frame rates to the nearest tenth, without a trailing ".0" (29.97 → "30").
+    function fps(value) {
+      return String(Math.round(Number(value) * 10) / 10);
     }
 
     function startPreviewFpsMeasurement(video, capabilityText = "") {
@@ -1213,7 +1218,7 @@
         if (elapsed >= 1500) {
           const measured = frames * 1000 / elapsed;
           document.getElementById("fps-actual").textContent =
-            `${measured.toFixed(1)} measured${capabilityText}`;
+            `${fps(measured)} measured${capabilityText}`;
           frames = 0;
           sampleStarted = now;
         }
@@ -1329,8 +1334,6 @@
       const autoExposureToggle = document.getElementById("toggle-auto_exposure_mode");
       if (autoExposureToggle) autoExposureToggle.setAttribute("aria-pressed", "false");
       const writeId = ++exposureWriteId;
-      const status = document.getElementById("exposure-diagnostic");
-      if (status) status.textContent = `Writing ${value}…`;
       try {
         const result = await api("POST", "/set", {
           control: "absolute_exposure_time",
@@ -1358,22 +1361,16 @@
         if (writeId !== exposureWriteId) return;
         const luma = measurePreviewLuma();
         const diagnostic = result.diagnostic;
-        if (status && diagnostic) {
-          const mode = diagnostic.modeAfter === 1 ? "manual" : `mode ${diagnostic.modeAfter}`;
-          status.textContent = `Requested ${value} · immediate ${diagnostic.immediate} · after 300 ms ${diagnostic.settled} · ${mode}` +
-            (luma === null ? "" : ` · preview luma ${luma.toFixed(1)}%`);
-          if (luma !== null) {
-            api("POST", "/diagnostic", {
-              type: "exposure-preview",
-              requested: value,
-              cameraValue: diagnostic.settled,
-              previewLuma: Number(luma.toFixed(2)),
-            }).catch(() => {});
-          }
+        if (diagnostic && luma !== null) {
+          api("POST", "/diagnostic", {
+            type: "exposure-preview",
+            requested: value,
+            cameraValue: diagnostic.settled,
+            previewLuma: Number(luma.toFixed(2)),
+          }).catch(() => {});
         }
       } catch (error) {
         if (writeId === exposureWriteId) {
-          if (status) status.textContent = `Exposure error: ${error.message}`;
           toast(`Exposure error: ${error.message}`);
         }
       }
@@ -1401,7 +1398,6 @@
               oninput="previewKiyoExposure(this.value)"
               onchange="commitNativeExposure(KIYO_EXPOSURE_STOPS[Math.round(Number(this.value))].value)">
           </div>
-          <p class="control-note flow-mono" id="exposure-diagnostic">Release to write and verify.</p>
           ${info("The Kiyo reports a continuous range but only applies these verified shutter stops. The number after the shutter speed is the native UVC value.")}`;
       }
       return `
@@ -1413,7 +1409,6 @@
             oninput="document.getElementById('val-absolute_exposure_time').textContent=this.value"
             onchange="commitNativeExposure(this.value)">
         </div>
-        <p class="control-note flow-mono" id="exposure-diagnostic">Release to write and verify.</p>
         ${info(`Values are native UVC units (${range.min}–${range.max}).`)}`;
     }
 
