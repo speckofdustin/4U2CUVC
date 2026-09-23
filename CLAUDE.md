@@ -7,12 +7,12 @@ Use Color Flow design system **v0.1.0** from `/Users/dustin/Documents/codex/Colo
 - Vendored runtime copy: `public/vendor/color-flow/` (`src/` + `LICENSE` at the pinned commit). Do not edit these files; do not fetch the private repo at build time.
 - Stay on this pin until Dustin says to upgrade.
 - `<body class="flow-ui">` is the single mounted root (`FlowUI.mount(document.body)` → `flowUI`). Call `flowUI.refresh()` after setting slider values programmatically or re-rendering sliders.
-- Themes: light and dark only (header Light/Dark buttons, saved in `localStorage` key `4u2c-theme`, first run follows the OS). No custom background colors.
+- Themes: light and dark only (Light/Dark buttons at the top of the Controls panel, saved in `localStorage` key `4u2c-theme`, first run follows the OS). No custom background colors.
 
 ### Deliberate deviations from Color Flow
 
 1. **Editable slider values.** `.flow-slider` normally shows a read-only `<output>`. Here most sliders carry a `.cam-slider-value` number field (built by `sliderHTML()` in `public/index.html`) layered above the invisible range input, so exact values can be typed. The exposure slider keeps a read-only output because it commits and verifies on release.
-2. **Status dot.** Green/red connection indicator in the header. Color Flow has no status palette, but the color carries meaning (camera connected vs. offline), so it is kept. It also has an `aria-label`.
+2. **Status dot.** Green/red connection indicator beside the Camera selector at the top of the Controls panel. Color Flow has no status palette, but the color carries meaning (camera connected vs. offline), so it is kept. It also has an `aria-label`.
 3. **Toast.** Color Flow has no toast; a local paper-sheet toast is used for transient results and errors.
 4. **Black preview stage.** The video stage stays black in both themes (letterbox around Fit). Scopes are *not* black: they sit on the panel paper with traces and graticule in the theme's ink, and vectorscope targets use a darker variant in light mode for legibility (`readScopePalette()` / `VS_TARGETS`). False color and the skin marker keep fixed data colors.
 5. **Toggles as pressed buttons, app-owned state.** UVC auto modes and backlight compensation use `.flow-button[aria-pressed]` without `data-flow-toggle`: the app sets `aria-pressed` from the value the camera confirms and reverts on failure.

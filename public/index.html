@@ -34,8 +34,6 @@
       min-width: 0;
     }
     .app-header .flow-muted { margin: 4px 0 0; font-size: 11px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .header-actions .flow-field { width: 260px; }
 
     /* Deviation: Color Flow has no status colors. Green/red here carries
        meaning (camera connected vs. offline), so it is kept deliberately. */
@@ -48,7 +46,8 @@
     }
     .status-dot.offline { background: #e74c3c; }
 
-    .theme-switch { display: flex; gap: 4px; }
+    .camera-row { display: flex; align-items: center; gap: 8px; }
+    .camera-row .flow-field { flex: 1; min-width: 0; }
 
     /* ── Preview stage ── */
     .preview-stage {
@@ -173,18 +172,6 @@
       min-height: 0;
       overflow: hidden;
     }
-    .scope-label {
-      position: absolute;
-      top: 5px;
-      right: 6px;
-      padding: 0 4px;
-      border-radius: 3px;
-      background: var(--flow-paper);
-      z-index: 2;
-      font: 10px var(--flow-mono);
-      color: var(--flow-muted);
-      pointer-events: none;
-    }
     .scope-canvas { display: block; width: 100%; height: 100%; }
 
     /* ── Controls panel ── */
@@ -196,7 +183,7 @@
     }
     .controls-panel .flow-panel-header + .flow-section { border-top: 0; margin-top: 0; padding-top: 0; }
     .control-note { font-size: 10px; color: var(--flow-muted); margin: 2px 0 0; }
-    .cam-empty { padding: 24px 0; font-size: 11px; color: var(--flow-muted); }
+    .cam-empty { font-size: 11px; color: var(--flow-muted); }
 
     /* Deviation: editable value inside a Color Flow slider. The number field
        sits above the invisible range input so it can be clicked and typed in;
@@ -277,8 +264,6 @@
         padding: 16px;
       }
       .app-header { flex-wrap: wrap; }
-      .header-actions { flex-wrap: wrap; }
-      .header-actions .flow-field { width: min(260px, 100%); }
       .preview-stage { height: 56vw; min-height: 300px; }
       .scopes-panel { height: 260px; }
       .controls-panel { grid-column: 1; grid-row: auto; overflow: visible; }
@@ -302,20 +287,6 @@
       <div>
         <h1 class="flow-title">4U2CtheUVC</h1>
         <p class="flow-muted">UVC camera control</p>
-      </div>
-      <div class="header-actions">
-        <span class="status-dot offline" id="status-dot" role="img" aria-label="Camera offline" title="Camera offline"></span>
-        <label class="flow-field">
-          <span>Camera</span>
-          <select id="device-select" onchange="selectDevice(this.value)">
-            <option value="">Detecting cameras...</option>
-          </select>
-        </label>
-        <button class="flow-button flow-button--outline" onclick="init()">Refresh</button>
-        <div class="theme-switch" role="group" aria-label="Theme">
-          <button class="flow-button" data-theme-choice="light" aria-pressed="false" onclick="setTheme('light')">Light</button>
-          <button class="flow-button" data-theme-choice="dark" aria-pressed="false" onclick="setTheme('dark')">Dark</button>
-        </div>
       </div>
     </header>
 
@@ -371,18 +342,39 @@
       </div>
       <div class="scopes-grid">
         <div class="scope">
-          <span class="scope-label">Waveform</span>
-          <canvas id="waveform" class="scope-canvas"></canvas>
+          <canvas id="waveform" class="scope-canvas" role="img" aria-label="Waveform"></canvas>
         </div>
         <div class="scope">
-          <span class="scope-label">Vectorscope</span>
-          <canvas id="vectorscope" class="scope-canvas"></canvas>
+          <canvas id="vectorscope" class="scope-canvas" role="img" aria-label="Vectorscope"></canvas>
         </div>
       </div>
     </section>
 
-    <section class="flow-panel controls-panel" id="controls-panel" aria-label="Camera controls">
-      <div class="cam-empty" id="loading">Loading controls...</div>
+    <section class="flow-panel controls-panel" id="controls-panel" aria-labelledby="controls-title">
+      <div class="flow-panel-header">
+        <h2 class="flow-panel-title" id="controls-title">Controls</h2>
+      </div>
+      <div class="flow-section">
+        <div class="flow-stack">
+          <div class="camera-row">
+            <span class="status-dot offline" id="status-dot" role="img" aria-label="Camera offline" title="Camera offline"></span>
+            <label class="flow-field">
+              <span>Camera</span>
+              <select id="device-select" onchange="selectDevice(this.value)">
+                <option value="">Detecting cameras...</option>
+              </select>
+            </label>
+          </div>
+          <button class="flow-button flow-button--outline" onclick="init()">Refresh</button>
+          <div class="flow-grid" role="group" aria-label="Theme">
+            <button class="flow-button" data-theme-choice="light" aria-pressed="false" onclick="setTheme('light')">Light</button>
+            <button class="flow-button" data-theme-choice="dark" aria-pressed="false" onclick="setTheme('dark')">Dark</button>
+          </div>
+        </div>
+      </div>
+      <div id="controls-body">
+        <div class="flow-section"><div class="cam-empty" id="loading">Loading controls...</div></div>
+      </div>
     </section>
   </div>
 
@@ -1403,7 +1395,7 @@
         throw new Error("Camera returned incomplete control data");
       }
       controlsData = data;
-      const panel = document.getElementById("controls-panel");
+      const panel = document.getElementById("controls-body");
 
       const toggleControls = [
         { key: "auto_exposure_mode", label: "Auto exposure", isAuto: (v) => v === 8, onVal: 8, offVal: 1 },
@@ -1460,10 +1452,6 @@
       const backlightVal = values.backlight_compensation ?? 0;
 
       panel.innerHTML = `
-        <div class="flow-panel-header">
-          <h2 class="flow-panel-title">Controls</h2>
-        </div>
-
         <div class="flow-section">
           <h3 class="flow-section-title">Auto modes</h3>
           <div class="flow-grid">${toggleControls.map(toggleHTML).join("")}</div>
@@ -1598,8 +1586,8 @@
           return;
         }
         setStatus(false);
-        document.getElementById("controls-panel").innerHTML =
-          '<div class="cam-empty">Could not load controls — click Refresh to retry</div>';
+        document.getElementById("controls-body").innerHTML =
+          '<div class="flow-section"><div class="cam-empty">Could not load controls — click Refresh to retry</div></div>';
       }
     }
 
@@ -1624,8 +1612,8 @@
         } else {
           select.innerHTML = '<option value="">No cameras found</option>';
           setStatus(false);
-          document.getElementById("controls-panel").innerHTML =
-            '<div class="cam-empty">No cameras detected — connect a camera and click Refresh</div>';
+          document.getElementById("controls-body").innerHTML =
+            '<div class="flow-section"><div class="cam-empty">No cameras detected — connect a camera and click Refresh</div></div>';
         }
       } catch (e) {
         if (retries > 0) {
@@ -1634,8 +1622,8 @@
         }
         setStatus(false);
         select.innerHTML = '<option value="">No cameras found</option>';
-        document.getElementById("controls-panel").innerHTML =
-          '<div class="cam-empty">Could not connect to server</div>';
+        document.getElementById("controls-body").innerHTML =
+          '<div class="flow-section"><div class="cam-empty">Could not connect to server</div></div>';
       }
     }
 
