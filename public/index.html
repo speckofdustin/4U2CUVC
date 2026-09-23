@@ -58,16 +58,14 @@
     }
     .app-header .flow-muted { margin: 4px 0 0; font-size: 11px; }
 
-    /* Deviation: Color Flow has no status colors. Green/red here carries
-       meaning (camera connected vs. offline), so it is kept deliberately. */
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      flex: 0 0 8px;
-      border-radius: 50%;
-      background: #44bd32;
+    /* Deviation: the Camera field tints with Color Flow's error red when the
+       camera or server can't be reached. No indicator when things work. */
+    .flow-field.cam-error {
+      background: color-mix(in srgb, var(--flow-invalid) 16%, transparent);
     }
-    .status-dot.offline { background: #e74c3c; }
+    [data-flow-theme="dark"] .flow-field.cam-error {
+      background: color-mix(in srgb, var(--flow-invalid) 26%, transparent);
+    }
 
 
     /* ── Preview stage ── */
@@ -377,14 +375,13 @@
       </div>
       <div class="flow-section">
         <div class="flow-stack">
-          <label class="flow-field">
-            <span class="status-dot offline" id="status-dot" aria-hidden="true" title="Camera offline"></span>
+          <label class="flow-field" id="camera-field">
             <span>Camera</span>
             <select id="device-select" onchange="selectDevice(this.value)" aria-describedby="camera-status">
               <option value="">Detecting cameras...</option>
             </select>
           </label>
-          <span class="flow-visually-hidden" id="camera-status" role="status">Camera offline</span>
+          <span class="flow-visually-hidden" id="camera-status" role="status"></span>
           <button class="flow-button" onclick="init()">Refresh</button>
           <div class="flow-grid" role="group" aria-label="Theme">
             <button class="flow-button" data-theme-choice="light" aria-pressed="false" onclick="setTheme('light')">Light</button>
@@ -456,12 +453,12 @@
     }
     try { setPreviewFit(localStorage.getItem("4u2c-fit")); } catch (e) { setPreviewFit("contain"); }
 
+    // Errors tint the Camera field; the normal state shows nothing extra.
     function setStatus(online) {
-      const dot = document.getElementById("status-dot");
-      const label = online ? "Camera connected" : "Camera offline";
-      dot.classList.toggle("offline", !online);
-      dot.title = label;
-      document.getElementById("camera-status").textContent = label;
+      const field = document.getElementById("camera-field");
+      field.classList.toggle("cam-error", !online);
+      field.title = online ? "" : "Camera unavailable";
+      document.getElementById("camera-status").textContent = online ? "" : "Camera unavailable";
     }
 
     // Color Flow slider with an editable value field (local variant).
